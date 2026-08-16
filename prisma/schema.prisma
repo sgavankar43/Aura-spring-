@@ -1,0 +1,102 @@
+// Prisma Schema for Supabase PostgreSQL Database
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id        String    @id @default(uuid()) @db.Uuid
+  email     String    @unique
+  password  String
+  name      String
+  role      String    @default("ADMIN")
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  projects  Project[]
+  auditLogs AuditLog[]
+
+  @@map("users")
+}
+
+model Project {
+  id           String        @id @default(uuid()) @db.Uuid
+  name         String
+  description  String?
+  apiKey       String        @unique @map("api_key")
+  userId       String?       @map("user_id") @db.Uuid
+  user         User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
+  createdAt    DateTime      @default(now()) @map("created_at")
+  updatedAt    DateTime      @updatedAt @map("updated_at")
+  archivedAt   DateTime?     @map("archived_at")
+  environments Environment[]
+  features     Feature[]
+  auditLogs    AuditLog[]
+
+  @@map("projects")
+}
+
+model Environment {
+  id            String         @id @default(uuid()) @db.Uuid
+  projectId     String         @map("project_id") @db.Uuid
+  project       Project        @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  name          String
+  slug          String
+  color         String?        @default("#6B7280")
+  sortOrder     Int            @default(1) @map("sort_order")
+  createdAt     DateTime       @default(now()) @map("created_at")
+  updatedAt     DateTime       @updatedAt @map("updated_at")
+  featureStates FeatureState[]
+
+  @@unique([projectId, slug], map: "idx_env_project_slug")
+  @@map("environments")
+}
+
+model Feature {
+  id             String         @id @default(uuid()) @db.Uuid
+  projectId      String         @map("project_id") @db.Uuid
+  project        Project        @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  key            String
+  name           String
+  description    String?
+  defaultEnabled Boolean        @default(false) @map("default_enabled")
+  createdAt      DateTime       @default(now()) @map("created_at")
+  updatedAt      DateTime       @updatedAt @map("updated_at")
+  featureStates  FeatureState[]
+
+  @@unique([projectId, key], map: "idx_feature_project_key")
+  @@map("features")
+}
+
+model FeatureState {
+  id            String      @id @default(uuid()) @db.Uuid
+  featureId     String      @map("feature_id") @db.Uuid
+  feature       Feature     @relation(fields: [featureId], references: [id], onDelete: Cascade)
+  environmentId String      @map("environment_id") @db.Uuid
+  environment   Environment @relation(fields: [environmentId], references: [id], onDelete: Cascade)
+  enabled       Boolean     @default(false)
+  createdAt     DateTime    @default(now()) @map("created_at")
+  updatedAt     DateTime    @updatedAt @map("updated_at")
+
+  @@unique([featureId, environmentId], map: "idx_feature_env")
+  @@map("feature_states")
+}
+
+model AuditLog {
+  id           String   @id @default(uuid()) @db.Uuid
+  projectId    String   @map("project_id") @db.Uuid
+  project      Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  userId       String?  @map("user_id") @db.Uuid
+  user         User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  action       String
+  entity       String
+  entityId     String   @map("entity_id")
+  metadataJson String?  @map("metadata_json")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  @@map("audit_logs")
+}

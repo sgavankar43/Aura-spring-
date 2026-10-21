@@ -2,7 +2,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import React, { useEffect, createContext } from 'react';
 import { useAuth } from './AuthContext';
 
-export const RealTimeContext = createContext<{ connected: boolean }>({ connected: false });
+const RealTimeContext = createContext<{ connected: boolean }>({ connected: false });
 
 /**
  * Refreshes flag and audit data when the window regains focus.

@@ -6,9 +6,9 @@ spring:
     name: aura-backend
 
   datasource:
-    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://db.rgohkhuqxitungrwanhv.supabase.co:5432/postgres?sslmode=require}
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/aura_db}
     username: ${SPRING_DATASOURCE_USERNAME:postgres}
-    password: ${SPRING_DATASOURCE_PASSWORD:xxFgCAGj6Js4MaDs}
+    password: ${SPRING_DATASOURCE_PASSWORD:postgrespassword}
     driver-class-name: org.postgresql.Driver
 
   jpa:

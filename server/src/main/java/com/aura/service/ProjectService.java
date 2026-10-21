@@ -11,7 +11,6 @@ import com.aura.repository.EnvironmentRepository;
 import com.aura.repository.ProjectRepository;
 import com.aura.repository.UserRepository;
 import com.aura.security.UserPrincipal;
-import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -23,13 +22,23 @@ import java.util.Map;
 import java.util.UUID;
 
 @Service
-@RequiredArgsConstructor
 public class ProjectService {
 
     private final ProjectRepository projectRepository;
     private final EnvironmentRepository environmentRepository;
     private final UserRepository userRepository;
     private final AuditLogService auditLogService;
+
+    public ProjectService(
+            ProjectRepository projectRepository,
+            EnvironmentRepository environmentRepository,
+            UserRepository userRepository,
+            AuditLogService auditLogService) {
+        this.projectRepository = projectRepository;
+        this.environmentRepository = environmentRepository;
+        this.userRepository = userRepository;
+        this.auditLogService = auditLogService;
+    }
 
     @Transactional(readOnly = true)
     public List<ProjectDto> getAllProjects() {

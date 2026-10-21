@@ -2,7 +2,6 @@ package com.aura.controller;
 
 import com.aura.dto.PaginatedAuditLogsDto;
 import com.aura.service.AuditLogService;
-import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -10,10 +9,13 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/projects/{projectId}/audit-logs")
-@RequiredArgsConstructor
 public class AuditLogController {
 
     private final AuditLogService auditLogService;
+
+    public AuditLogController(AuditLogService auditLogService) {
+        this.auditLogService = auditLogService;
+    }
 
     @GetMapping
     public ResponseEntity<PaginatedAuditLogsDto> getAuditLogs(

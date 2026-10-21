@@ -1,13 +1,11 @@
 package com.aura.controller;
 
-import com.aura.dto.ProjectDto;
 import com.aura.dto.ProjectRequest;
 import com.aura.dto.ProjectResponse;
 import com.aura.dto.ProjectsResponse;
 import com.aura.security.UserPrincipal;
 import com.aura.service.ProjectService;
 import jakarta.validation.Valid;
-import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
@@ -16,10 +14,13 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/projects")
-@RequiredArgsConstructor
 public class ProjectController {
 
     private final ProjectService projectService;
+
+    public ProjectController(ProjectService projectService) {
+        this.projectService = projectService;
+    }
 
     @GetMapping
     public ResponseEntity<ProjectsResponse> getAllProjects() {

@@ -1,0 +1,14 @@
+{
+  "name": "aura-platform",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Aura Distributed Feature Flag Platform",
+  "scripts": {
+    "start": "./start.sh",
+    "dev": "./start.sh",
+    "dev:client": "npm run dev --prefix client",
+    "dev:server": "cd server && ./mvnw spring-boot:run",
+    "build": "npm run build --prefix client && cd server && ./mvnw compile",
+    "lint": "npm run lint --prefix client"
+  }
+}

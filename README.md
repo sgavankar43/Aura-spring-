@@ -73,15 +73,36 @@ export JWT_SECRET="your_custom_secure_256bit_jwt_secret_key_here"
 
 ---
 
-### Step 3: Run the Application
+### Step 3: Run the Application (One Common Command)
 
-#### Option A: One-Click Startup Script
-
+From the project root:
 ```bash
+npm run dev
+# or
 ./start.sh
 ```
 
-#### Option B: Manual Execution
+This single command:
+1. Verifies local PostgreSQL is active.
+2. Cleans up any stale processes on ports 8080 and 5173.
+3. Automatically launches the Spring Boot 3 API and Vite Frontend with color-coded terminal prefixes (`[BACKEND]`, `[FRONTEND]`).
+4. Runs health checks until both services are fully initialized.
+5. Displays a live status dashboard in the terminal.
+
+---
+
+### 🔑 Default Seed Credentials
+
+Upon startup, seed accounts and initial sample project data are automatically provisioned:
+
+| Role | Email | Password | Permissions |
+| :--- | :--- | :--- | :--- |
+| **Administrator** | `admin@aura.dev` | `AdminPassword123!` | Full admin access, project creation, environment configuration |
+| **Developer** | `developer@aura.dev` | `DevPassword123!` | Developer access, feature flag toggles, audit logs |
+
+---
+
+#### Manual Execution (Alternative)
 
 1. **Start Spring Boot Backend** (Port 8080):
    ```bash

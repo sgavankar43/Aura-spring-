@@ -14,7 +14,6 @@ import com.aura.repository.FeatureStateRepository;
 import com.aura.repository.ProjectRepository;
 import com.aura.repository.UserRepository;
 import com.aura.security.UserPrincipal;
-import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,7 +23,6 @@ import java.util.Map;
 import java.util.UUID;
 
 @Service
-@RequiredArgsConstructor
 public class EnvironmentService {
 
     private final ProjectRepository projectRepository;
@@ -33,6 +31,21 @@ public class EnvironmentService {
     private final FeatureStateRepository featureStateRepository;
     private final UserRepository userRepository;
     private final AuditLogService auditLogService;
+
+    public EnvironmentService(
+            ProjectRepository projectRepository,
+            EnvironmentRepository environmentRepository,
+            FeatureRepository featureRepository,
+            FeatureStateRepository featureStateRepository,
+            UserRepository userRepository,
+            AuditLogService auditLogService) {
+        this.projectRepository = projectRepository;
+        this.environmentRepository = environmentRepository;
+        this.featureRepository = featureRepository;
+        this.featureStateRepository = featureStateRepository;
+        this.userRepository = userRepository;
+        this.auditLogService = auditLogService;
+    }
 
     @Transactional
     public EnvironmentDto createEnvironment(UUID projectId, EnvironmentRequest request, UserPrincipal principal) {

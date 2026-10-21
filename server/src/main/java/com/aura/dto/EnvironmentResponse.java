@@ -1,14 +1,17 @@
 package com.aura.dto;
 
-import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
-import lombok.NoArgsConstructor;
 
 @Data
-@Builder
-@NoArgsConstructor
-@AllArgsConstructor
 public class EnvironmentResponse {
     private EnvironmentDto environment;
+
+    public EnvironmentResponse() {
+    }
+
+    @Builder
+    public EnvironmentResponse(EnvironmentDto environment) {
+        this.environment = environment;
+    }
 }

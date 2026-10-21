@@ -6,7 +6,6 @@ import com.aura.entity.*;
 import com.aura.exception.ApiException;
 import com.aura.repository.*;
 import com.aura.security.UserPrincipal;
-import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -17,7 +16,6 @@ import java.util.Map;
 import java.util.UUID;
 
 @Service
-@RequiredArgsConstructor
 public class FeatureService {
 
     private final ProjectRepository projectRepository;
@@ -26,6 +24,21 @@ public class FeatureService {
     private final FeatureStateRepository featureStateRepository;
     private final UserRepository userRepository;
     private final AuditLogService auditLogService;
+
+    public FeatureService(
+            ProjectRepository projectRepository,
+            EnvironmentRepository environmentRepository,
+            FeatureRepository featureRepository,
+            FeatureStateRepository featureStateRepository,
+            UserRepository userRepository,
+            AuditLogService auditLogService) {
+        this.projectRepository = projectRepository;
+        this.environmentRepository = environmentRepository;
+        this.featureRepository = featureRepository;
+        this.featureStateRepository = featureStateRepository;
+        this.userRepository = userRepository;
+        this.auditLogService = auditLogService;
+    }
 
     @Transactional(readOnly = true)
     public List<FeatureRowDto> getFeaturesForProject(UUID projectId) {

@@ -1,27 +1,38 @@
 package com.aura.dto;
 
-import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
-import lombok.NoArgsConstructor;
 
 import java.util.List;
 
 @Data
-@Builder
-@NoArgsConstructor
-@AllArgsConstructor
 public class PaginatedAuditLogsDto {
     private List<AuditLogEntryDto> data;
     private AuditMeta meta;
 
-    @Data
+    public PaginatedAuditLogsDto() {
+    }
+
     @Builder
-    @NoArgsConstructor
-    @AllArgsConstructor
+    public PaginatedAuditLogsDto(List<AuditLogEntryDto> data, AuditMeta meta) {
+        this.data = data;
+        this.meta = meta;
+    }
+
+    @Data
     public static class AuditMeta {
         private int page;
         private long total;
         private int totalPages;
+
+        public AuditMeta() {
+        }
+
+        @Builder
+        public AuditMeta(int page, long total, int totalPages) {
+            this.page = page;
+            this.total = total;
+            this.totalPages = totalPages;
+        }
     }
 }

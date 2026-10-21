@@ -1,7 +1,9 @@
 package com.aura.entity;
 
 import jakarta.persistence.*;
-import lombok.*;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
@@ -12,9 +14,6 @@ import java.util.UUID;
 @Table(name = "users")
 @Getter
 @Setter
-@NoArgsConstructor
-@AllArgsConstructor
-@Builder
 public class User {
 
     @Id
@@ -30,7 +29,6 @@ public class User {
     @Column(nullable = false)
     private String name;
 
-    @Builder.Default
     @Column(nullable = false)
     private String role = "ADMIN";
 
@@ -41,4 +39,18 @@ public class User {
     @UpdateTimestamp
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
+
+    public User() {
+    }
+
+    @Builder
+    public User(UUID id, String email, String password, String name, String role, LocalDateTime createdAt, LocalDateTime updatedAt) {
+        this.id = id;
+        this.email = email;
+        this.password = password;
+        this.name = name;
+        this.role = (role != null) ? role : "ADMIN";
+        this.createdAt = createdAt;
+        this.updatedAt = updatedAt;
+    }
 }

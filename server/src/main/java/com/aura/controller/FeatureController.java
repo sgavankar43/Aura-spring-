@@ -7,7 +7,6 @@ import com.aura.dto.FlagToggleRequest;
 import com.aura.security.UserPrincipal;
 import com.aura.service.FeatureService;
 import jakarta.validation.Valid;
-import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
@@ -17,10 +16,13 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/projects/{projectId}")
-@RequiredArgsConstructor
 public class FeatureController {
 
     private final FeatureService featureService;
+
+    public FeatureController(FeatureService featureService) {
+        this.featureService = featureService;
+    }
 
     @GetMapping("/features")
     public ResponseEntity<FeaturesResponse> getFeatures(@PathVariable UUID projectId) {

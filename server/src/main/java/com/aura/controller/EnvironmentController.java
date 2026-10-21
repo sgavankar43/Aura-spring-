@@ -5,7 +5,6 @@ import com.aura.dto.EnvironmentResponse;
 import com.aura.security.UserPrincipal;
 import com.aura.service.EnvironmentService;
 import jakarta.validation.Valid;
-import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
@@ -14,10 +13,13 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/projects/{projectId}/environments")
-@RequiredArgsConstructor
 public class EnvironmentController {
 
     private final EnvironmentService environmentService;
+
+    public EnvironmentController(EnvironmentService environmentService) {
+        this.environmentService = environmentService;
+    }
 
     @PostMapping
     public ResponseEntity<EnvironmentResponse> createEnvironment(

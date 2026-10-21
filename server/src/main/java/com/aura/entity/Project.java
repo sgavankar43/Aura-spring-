@@ -1,7 +1,9 @@
 package com.aura.entity;
 
 import jakarta.persistence.*;
-import lombok.*;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
@@ -14,9 +16,6 @@ import java.util.UUID;
 @Table(name = "projects")
 @Getter
 @Setter
-@NoArgsConstructor
-@AllArgsConstructor
-@Builder
 public class Project {
 
     @Id
@@ -47,12 +46,27 @@ public class Project {
     @Column(name = "archived_at")
     private LocalDateTime archivedAt;
 
-    @Builder.Default
     @OneToMany(mappedBy = "project", cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderBy("sortOrder ASC")
     private List<Environment> environments = new ArrayList<>();
 
-    @Builder.Default
     @OneToMany(mappedBy = "project", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Feature> features = new ArrayList<>();
+
+    public Project() {
+    }
+
+    @Builder
+    public Project(UUID id, String name, String description, String apiKey, User user, LocalDateTime createdAt, LocalDateTime updatedAt, LocalDateTime archivedAt, List<Environment> environments, List<Feature> features) {
+        this.id = id;
+        this.name = name;
+        this.description = description;
+        this.apiKey = apiKey;
+        this.user = user;
+        this.createdAt = createdAt;
+        this.updatedAt = updatedAt;
+        this.archivedAt = archivedAt;
+        this.environments = (environments != null) ? environments : new ArrayList<>();
+        this.features = (features != null) ? features : new ArrayList<>();
+    }
 }

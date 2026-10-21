@@ -1,7 +1,9 @@
 package com.aura.entity;
 
 import jakarta.persistence.*;
-import lombok.*;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
@@ -16,9 +18,6 @@ import java.util.UUID;
 })
 @Getter
 @Setter
-@NoArgsConstructor
-@AllArgsConstructor
-@Builder
 public class Feature {
 
     @Id
@@ -49,7 +48,22 @@ public class Feature {
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 
-    @Builder.Default
     @OneToMany(mappedBy = "feature", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<FeatureState> states = new ArrayList<>();
+
+    public Feature() {
+    }
+
+    @Builder
+    public Feature(UUID id, Project project, String key, String name, String description, Boolean defaultEnabled, LocalDateTime createdAt, LocalDateTime updatedAt, List<FeatureState> states) {
+        this.id = id;
+        this.project = project;
+        this.key = key;
+        this.name = name;
+        this.description = description;
+        this.defaultEnabled = defaultEnabled;
+        this.createdAt = createdAt;
+        this.updatedAt = updatedAt;
+        this.states = (states != null) ? states : new ArrayList<>();
+    }
 }

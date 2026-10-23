@@ -2,6 +2,7 @@ import {
   Activity,
   Boxes,
   Flag,
+  FolderGit2,
   LayoutDashboard,
   LogOut,
   Menu,
@@ -72,7 +73,7 @@ function HealthBadge() {
     );
   }
 
-  const healthy = data.status === 'healthy';
+  const healthy = data.status === 'healthy' || data.status === 'ok';
 
   return (
     <span
@@ -175,6 +176,14 @@ export default function DashboardLayout() {
               >
                 <Boxes className="h-4 w-4 shrink-0" />
                 Environments
+              </NavLink>
+              <NavLink
+                to={`/projects/${projectId}/github`}
+                className={navLinkClass}
+                data-testid="nav-github"
+              >
+                <FolderGit2 className="h-4 w-4 shrink-0" />
+                GitHub
               </NavLink>
               <NavLink
                 to={`/projects/${projectId}/audit`}

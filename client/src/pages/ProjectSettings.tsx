@@ -1,12 +1,12 @@
-import { Copy, Check, Trash2, KeyRound } from 'lucide-react';
+import { Copy, Check, Trash2, KeyRound, FolderGit2 } from 'lucide-react';
 import { useState } from 'react';
-import { useNavigate, useOutletContext } from 'react-router-dom';
+import { Link, useNavigate, useOutletContext } from 'react-router-dom';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
 import { Label } from '@/components/ui/Label';
 import { Modal } from '@/components/ui/Modal';
-import { useArchiveProject, useUpdateProject } from '@/hooks/queries';
+import { useArchiveProject, useGithubStatus, useUpdateProject } from '@/hooks/queries';
 import type { Project } from '@/types/domain';
 
 export default function ProjectSettings() {
@@ -14,6 +14,7 @@ export default function ProjectSettings() {
   const navigate = useNavigate();
   const updateProject = useUpdateProject(project.id);
   const archiveProject = useArchiveProject(project.id);
+  const { data: ghStatus } = useGithubStatus(project.id);
 
   const [name, setName] = useState(project.name);
   const [description, setDescription] = useState(project.description ?? '');
@@ -152,6 +153,47 @@ export default function ProjectSettings() {
               )}
             </Button>
           </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <FolderGit2 className="h-5 w-5 text-primary" />
+            <CardTitle>GitHub Integration</CardTitle>
+          </div>
+          <CardDescription>
+            Connect and synchronize code branches, tags, releases, and pull requests with Aura.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {ghStatus?.connected ? (
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between rounded-lg border bg-muted/30 p-3">
+              <div>
+                <span className="font-semibold text-sm">{ghStatus.repoFullName}</span>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Default branch: <span className="font-mono">{ghStatus.defaultBranch}</span> ·{' '}
+                  {ghStatus.isPrivate ? 'Private' : 'Public'}
+                </p>
+              </div>
+              <Link to={`/projects/${project.id}/github`}>
+                <Button type="button" variant="outline" size="sm">
+                  Manage GitHub
+                </Button>
+              </Link>
+            </div>
+          ) : (
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between rounded-lg border border-dashed p-4">
+              <p className="text-sm text-muted-foreground">
+                No GitHub repository connected yet.
+              </p>
+              <Link to={`/projects/${project.id}/github`}>
+                <Button type="button" size="sm">
+                  Connect Repository
+                </Button>
+              </Link>
+            </div>
+          )}
         </CardContent>
       </Card>
 

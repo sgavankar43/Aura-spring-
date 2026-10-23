@@ -1,6 +1,17 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiFetch, publicFetch } from '@/lib/api';
-import type { Environment, FeatureRow, PaginatedAuditLogs, Project } from '@/types/domain';
+import type {
+  Environment,
+  FeatureRow,
+  GithubBranch,
+  GithubCommit,
+  GithubContent,
+  GithubPullRequest,
+  GithubStatus,
+  GithubTag,
+  PaginatedAuditLogs,
+  Project,
+} from '@/types/domain';
 
 export function useProjects() {
   return useQuery({
@@ -104,6 +115,8 @@ export function useCreateEnvironment(projectId: string) {
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['project', projectId] });
+      queryClient.invalidateQueries({ queryKey: ['features', projectId] });
+      queryClient.invalidateQueries({ queryKey: ['audit-logs', projectId] });
     },
   });
 }
@@ -176,5 +189,129 @@ export function useHealth() {
     queryFn: () => publicFetch<HealthJson>('/health'),
     staleTime: 30_000,
     retry: 1,
+  });
+}
+
+export function useGithubStatus(projectId: string | undefined) {
+  return useQuery({
+    queryKey: ['github-status', projectId],
+    queryFn: () => apiFetch<GithubStatus>(`/projects/${projectId}/github/status`),
+    enabled: Boolean(projectId),
+    staleTime: 60_000,
+  });
+}
+
+export function useConnectGithub(projectId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: { repository: string; accessToken?: string; defaultBranch?: string }) =>
+      apiFetch<GithubStatus>(`/projects/${projectId}/github/connect`, {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+    onSuccess: (res) => {
+      queryClient.setQueryData(['github-status', projectId], res);
+      queryClient.invalidateQueries({ queryKey: ['github-branches', projectId] });
+      queryClient.invalidateQueries({ queryKey: ['github-tags', projectId] });
+      queryClient.invalidateQueries({ queryKey: ['github-commits', projectId] });
+      queryClient.invalidateQueries({ queryKey: ['github-pulls', projectId] });
+      queryClient.invalidateQueries({ queryKey: ['audit-logs', projectId] });
+    },
+  });
+}
+
+export function useDisconnectGithub(projectId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () =>
+      apiFetch(`/projects/${projectId}/github/disconnect`, {
+        method: 'DELETE',
+      }),
+    onSuccess: () => {
+      queryClient.setQueryData(['github-status', projectId], { connected: false });
+      queryClient.removeQueries({ queryKey: ['github-branches', projectId] });
+      queryClient.removeQueries({ queryKey: ['github-tags', projectId] });
+      queryClient.removeQueries({ queryKey: ['github-commits', projectId] });
+      queryClient.removeQueries({ queryKey: ['github-tree', projectId] });
+      queryClient.removeQueries({ queryKey: ['github-pulls', projectId] });
+      queryClient.invalidateQueries({ queryKey: ['audit-logs', projectId] });
+    },
+  });
+}
+
+export function useGithubBranches(projectId: string, enabled = true) {
+  return useQuery({
+    queryKey: ['github-branches', projectId],
+    queryFn: () => apiFetch<GithubBranch[]>(`/projects/${projectId}/github/branches`),
+    enabled: Boolean(projectId) && enabled,
+    staleTime: 30_000,
+  });
+}
+
+export function useGithubTags(projectId: string, enabled = true) {
+  return useQuery({
+    queryKey: ['github-tags', projectId],
+    queryFn: () => apiFetch<GithubTag[]>(`/projects/${projectId}/github/tags`),
+    enabled: Boolean(projectId) && enabled,
+    staleTime: 60_000,
+  });
+}
+
+export function useGithubCommits(projectId: string, branch?: string, enabled = true) {
+  return useQuery({
+    queryKey: ['github-commits', projectId, branch],
+    queryFn: () => {
+      const q = branch ? `?branch=${encodeURIComponent(branch)}&limit=30` : '?limit=30';
+      return apiFetch<GithubCommit[]>(`/projects/${projectId}/github/commits${q}`);
+    },
+    enabled: Boolean(projectId) && enabled,
+    staleTime: 30_000,
+  });
+}
+
+export function useGithubTree(projectId: string, branch?: string, path = '', enabled = true) {
+  return useQuery({
+    queryKey: ['github-tree', projectId, branch, path],
+    queryFn: () => {
+      const params = new URLSearchParams();
+      if (branch) params.set('branch', branch);
+      if (path) params.set('path', path);
+      const query = params.toString() ? `?${params.toString()}` : '';
+      return apiFetch<GithubContent[]>(`/projects/${projectId}/github/tree${query}`);
+    },
+    enabled: Boolean(projectId) && enabled,
+    staleTime: 60_000,
+  });
+}
+
+export function useGithubPullRequests(projectId: string, state = 'all', enabled = true) {
+  return useQuery({
+    queryKey: ['github-pulls', projectId, state],
+    queryFn: () => apiFetch<GithubPullRequest[]>(`/projects/${projectId}/github/pulls?state=${state}`),
+    enabled: Boolean(projectId) && enabled,
+    staleTime: 30_000,
+  });
+}
+
+export function useLinkFeatureGithub(projectId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      featureId,
+      branch,
+      prNumber,
+    }: {
+      featureId: string;
+      branch?: string | null;
+      prNumber?: number | null;
+    }) =>
+      apiFetch<FeatureRow>(`/projects/${projectId}/features/${featureId}/github`, {
+        method: 'PATCH',
+        body: JSON.stringify({ branch, prNumber }),
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['features', projectId] });
+      queryClient.invalidateQueries({ queryKey: ['audit-logs', projectId] });
+    },
   });
 }

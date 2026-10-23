@@ -73,6 +73,93 @@ public class AuditLogService {
                 .build();
     }
 
+    @Transactional(readOnly = true)
+    public List<AuditLogEntryDto> getAllAuditLogsForExport(UUID projectId) {
+        return auditLogRepository.findByProjectIdOrderByCreatedAtDesc(projectId).stream()
+                .map(this::mapToDto)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public String exportAuditLogsToCsv(UUID projectId) {
+        List<AuditLogEntryDto> logs = getAllAuditLogsForExport(projectId);
+        StringBuilder sb = new StringBuilder();
+
+        // CSV Header
+        sb.append("ID,Timestamp,Action,Entity,Entity ID,User ID,User Name,User Email,Details,Metadata\n");
+
+        for (AuditLogEntryDto log : logs) {
+            sb.append(escapeCsvField(log.getId() != null ? log.getId().toString() : "")).append(",");
+            sb.append(escapeCsvField(log.getCreatedAt() != null ? log.getCreatedAt().toString() : "")).append(",");
+            sb.append(escapeCsvField(log.getAction())).append(",");
+            sb.append(escapeCsvField(log.getEntity())).append(",");
+            sb.append(escapeCsvField(log.getEntityId())).append(",");
+            sb.append(escapeCsvField(log.getUserId() != null ? log.getUserId().toString() : "")).append(",");
+            sb.append(escapeCsvField(log.getUserName() != null ? log.getUserName() : "System")).append(",");
+            sb.append(escapeCsvField(log.getUserEmail() != null ? log.getUserEmail() : "N/A")).append(",");
+            sb.append(escapeCsvField(formatDetailsForExport(log))).append(",");
+
+            String metaString = "";
+            if (log.getMetadata() != null && !log.getMetadata().isEmpty()) {
+                try {
+                    metaString = objectMapper.writeValueAsString(log.getMetadata());
+                } catch (Exception ignored) {
+                }
+            }
+            sb.append(escapeCsvField(metaString)).append("\n");
+        }
+
+        return sb.toString();
+    }
+
+    private String formatDetailsForExport(AuditLogEntryDto log) {
+        Map<String, Object> meta = log.getMetadata() != null ? log.getMetadata() : Collections.emptyMap();
+        String action = log.getAction() != null ? log.getAction() : "";
+
+        return switch (action.toUpperCase()) {
+            case "FLAG_TOGGLED", "FLAG.TOGGLED" -> {
+                Object enabled = meta.get("enabled");
+                Object featureKey = meta.getOrDefault("featureKey", meta.get("key"));
+                Object envSlug = meta.get("envSlug");
+                yield "Toggled " + (featureKey != null ? featureKey : "?") + " to " +
+                        (Boolean.TRUE.equals(enabled) ? "ON" : "OFF") +
+                        (envSlug != null ? " in " + envSlug : "");
+            }
+            case "FEATURE_CREATED", "FEATURE.CREATED" -> {
+                Object featureKey = meta.getOrDefault("featureKey", meta.get("key"));
+                yield "Created feature flag " + (featureKey != null ? featureKey : "?");
+            }
+            case "ENVIRONMENT_CREATED", "ENVIRONMENT.CREATED" -> {
+                Object envName = meta.getOrDefault("name", meta.get("slug"));
+                yield "Created environment " + (envName != null ? envName : "?");
+            }
+            case "PROJECT_CREATED", "PROJECT.CREATED" -> "Created the project";
+            case "PROJECT_UPDATED", "PROJECT.UPDATED" -> "Updated project details";
+            case "PROJECT_ARCHIVED", "PROJECT.ARCHIVED" -> "Archived the project";
+            case "GITHUB_CONNECTED" -> "Connected GitHub repository: " + meta.getOrDefault("repo", "");
+            case "GITHUB_DISCONNECTED" -> "Disconnected GitHub repository: " + meta.getOrDefault("repo", "");
+            case "FEATURE_GITHUB_LINKED" -> "Linked feature " + meta.getOrDefault("featureKey", "") +
+                    " to branch " + meta.getOrDefault("branch", "");
+            default -> action;
+        };
+    }
+
+    private String escapeCsvField(String field) {
+        if (field == null) {
+            return "";
+        }
+        // Neutralize CSV injection vulnerability
+        String clean = field;
+        if (!clean.isEmpty() && (clean.startsWith("=") || clean.startsWith("+") || clean.startsWith("-") || clean.startsWith("@"))) {
+            clean = "'" + clean;
+        }
+
+        if (clean.contains(",") || clean.contains("\"") || clean.contains("\n") || clean.contains("\r")) {
+            return "\"" + clean.replace("\"", "\"\"") + "\"";
+        }
+        return clean;
+    }
+
     private AuditLogEntryDto mapToDto(AuditLog log) {
         Map<String, Object> metadata = null;
         if (log.getMetadataJson() != null) {
@@ -89,6 +176,8 @@ public class AuditLogService {
                 .entity(log.getEntity())
                 .entityId(log.getEntityId())
                 .userId(log.getUser() != null ? log.getUser().getId() : null)
+                .userName(log.getUser() != null ? log.getUser().getName() : null)
+                .userEmail(log.getUser() != null ? log.getUser().getEmail() : null)
                 .projectId(log.getProject() != null ? log.getProject().getId() : null)
                 .metadata(metadata)
                 .createdAt(log.getCreatedAt())

@@ -1,4 +1,4 @@
-import { Plus, Power } from 'lucide-react';
+import { FolderGit2, GitBranch, Link, Plus, Power } from 'lucide-react';
 import { useState } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import { PageLoader } from '@/components/feedback/PageLoader';
@@ -6,7 +6,14 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Label } from '@/components/ui/Label';
 import { Modal } from '@/components/ui/Modal';
-import { useCreateFeature, useFeatures, useToggleFlag } from '@/hooks/queries';
+import {
+  useCreateFeature,
+  useFeatures,
+  useGithubBranches,
+  useGithubStatus,
+  useLinkFeatureGithub,
+  useToggleFlag,
+} from '@/hooks/queries';
 import { cn } from '@/lib/utils';
 import type { Environment, FeatureRow, Project } from '@/types/domain';
 
@@ -15,13 +22,26 @@ export default function FeatureGrid() {
   const { data: features, isLoading } = useFeatures(project.id);
   const toggleFlag = useToggleFlag(project.id);
   const createFeature = useCreateFeature(project.id);
+  const linkFeatureGithub = useLinkFeatureGithub(project.id);
+
+  const { data: ghStatus } = useGithubStatus(project.id);
+  const isGhConnected = Boolean(ghStatus?.connected);
+  const { data: ghBranches } = useGithubBranches(project.id, isGhConnected);
 
   const [modalOpen, setModalOpen] = useState(false);
   const [key, setKey] = useState('');
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [defaultEnabled, setDefaultEnabled] = useState(false);
+  const [initialBranch, setInitialBranch] = useState('');
   const [formError, setFormError] = useState('');
+
+  // Link GitHub modal state
+  const [linkModalOpen, setLinkModalOpen] = useState(false);
+  const [linkingFeature, setLinkingFeature] = useState<FeatureRow | null>(null);
+  const [linkBranch, setLinkBranch] = useState('');
+  const [linkPrNumber, setLinkPrNumber] = useState<string>('');
+  const [linkError, setLinkError] = useState('');
 
   const environments: Environment[] = project.environments ?? [];
 
@@ -30,6 +50,7 @@ export default function FeatureGrid() {
     setName('');
     setDescription('');
     setDefaultEnabled(false);
+    setInitialBranch('');
     setFormError('');
   };
 
@@ -37,16 +58,51 @@ export default function FeatureGrid() {
     e.preventDefault();
     setFormError('');
     try {
-      await createFeature.mutateAsync({
+      const res = await createFeature.mutateAsync({
         key: key.trim(),
         name: name.trim(),
         description: description.trim() || undefined,
         defaultEnabled,
       });
+
+      // If user selected an initial branch, link it
+      if (initialBranch.trim() && res && (res as { id?: string }).id) {
+        await linkFeatureGithub.mutateAsync({
+          featureId: (res as { id: string }).id,
+          branch: initialBranch.trim(),
+        });
+      }
+
       resetForm();
       setModalOpen(false);
     } catch (err) {
       setFormError(err instanceof Error ? err.message : 'Could not create feature');
+    }
+  };
+
+  const openLinkModal = (feature: FeatureRow) => {
+    setLinkingFeature(feature);
+    setLinkBranch(feature.githubBranch ?? '');
+    setLinkPrNumber(feature.githubPrNumber ? String(feature.githubPrNumber) : '');
+    setLinkError('');
+    setLinkModalOpen(true);
+  };
+
+  const handleSaveGithubLink = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!linkingFeature) return;
+    setLinkError('');
+    try {
+      const prNum = linkPrNumber.trim() ? parseInt(linkPrNumber.trim(), 10) : null;
+      await linkFeatureGithub.mutateAsync({
+        featureId: linkingFeature.id,
+        branch: linkBranch.trim() || null,
+        prNumber: prNum && !isNaN(prNum) ? prNum : null,
+      });
+      setLinkModalOpen(false);
+      setLinkingFeature(null);
+    } catch (err) {
+      setLinkError(err instanceof Error ? err.message : 'Failed to update GitHub link');
     }
   };
 
@@ -61,9 +117,20 @@ export default function FeatureGrid() {
   return (
     <div className="space-y-4" data-testid="feature-grid">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <p className="text-sm text-muted-foreground">
-          Toggle flag state per environment. Changes apply immediately for connected SDKs.
-        </p>
+        <div>
+          <p className="text-sm text-muted-foreground">
+            Toggle flag state per environment. Changes apply immediately for connected SDKs.
+          </p>
+          {isGhConnected ? (
+            <p className="mt-0.5 flex items-center gap-1.5 text-xs text-muted-foreground">
+              <FolderGit2 className="h-3.5 w-3.5 text-primary" />
+              Connected to{' '}
+              <span className="font-mono font-medium text-foreground">
+                {ghStatus?.repoFullName}
+              </span>
+            </p>
+          ) : null}
+        </div>
         <Button
           type="button"
           onClick={() => setModalOpen(true)}
@@ -87,6 +154,11 @@ export default function FeatureGrid() {
             <thead className="border-b bg-muted/40 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               <tr>
                 <th className="px-4 py-3 md:px-6">Feature</th>
+                {isGhConnected ? (
+                  <th className="px-3 py-3 text-center text-xs font-medium uppercase tracking-wider">
+                    GitHub Code Link
+                  </th>
+                ) : null}
                 {environments.map((env) => (
                   <th key={env.id} className="px-4 py-3 text-center md:px-6">
                     <span className="inline-flex items-center justify-center gap-2">
@@ -104,7 +176,7 @@ export default function FeatureGrid() {
               {features?.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={environments.length + 1}
+                    colSpan={environments.length + (isGhConnected ? 2 : 1)}
                     className="px-6 py-12 text-center text-muted-foreground"
                   >
                     No features yet. Create one to start rolling out safely.
@@ -119,11 +191,45 @@ export default function FeatureGrid() {
                   data-testid={`feature-row-${feature.key}`}
                 >
                   <td className="px-4 py-4 md:px-6">
-                    <span className="font-mono text-xs font-medium text-foreground">
-                      {feature.key}
-                    </span>
-                    <p className="mt-1 text-xs text-muted-foreground">{feature.name}</p>
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="font-mono text-xs font-medium text-foreground">
+                        {feature.key}
+                      </span>
+                    </div>
+                    <p className="mt-0.5 text-xs text-muted-foreground">{feature.name}</p>
                   </td>
+
+                  {isGhConnected ? (
+                    <td className="px-3 py-4 text-center">
+                      {feature.githubBranch || feature.githubPrNumber ? (
+                        <button
+                          type="button"
+                          onClick={() => openLinkModal(feature)}
+                          className="inline-flex items-center gap-1.5 rounded-md border border-primary/20 bg-primary/5 px-2 py-1 text-xs font-mono text-primary hover:bg-primary/10 transition-colors"
+                          title="Click to edit GitHub link"
+                        >
+                          <GitBranch className="h-3 w-3" />
+                          <span>{feature.githubBranch ?? 'branch'}</span>
+                          {feature.githubPrNumber ? (
+                            <span className="rounded bg-primary/15 px-1 py-0.2 text-[10px]">
+                              PR #{feature.githubPrNumber}
+                            </span>
+                          ) : null}
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => openLinkModal(feature)}
+                          className="inline-flex items-center gap-1 rounded border border-dashed px-2 py-0.5 text-xs text-muted-foreground hover:border-primary/50 hover:text-foreground transition-colors"
+                          title="Link to GitHub Branch or PR"
+                        >
+                          <Link className="h-3 w-3" />
+                          <span>Link branch</span>
+                        </button>
+                      )}
+                    </td>
+                  ) : null}
+
                   {environments.map((env) => {
                     const stateVal = feature.states[env.slug] ?? feature.defaultEnabled;
                     return (
@@ -159,6 +265,7 @@ export default function FeatureGrid() {
         </div>
       </div>
 
+      {/* New Feature Modal */}
       <Modal
         open={modalOpen}
         onClose={() => {
@@ -208,6 +315,26 @@ export default function FeatureGrid() {
               className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
             />
           </div>
+
+          {isGhConnected && ghBranches && ghBranches.length > 0 ? (
+            <div className="space-y-2">
+              <Label htmlFor="feat-branch">Link to GitHub Branch (optional)</Label>
+              <select
+                id="feat-branch"
+                value={initialBranch}
+                onChange={(e) => setInitialBranch(e.target.value)}
+                className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-xs font-mono ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                <option value="">-- No branch linked --</option>
+                {ghBranches.map((b) => (
+                  <option key={b.name} value={b.name}>
+                    {b.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          ) : null}
+
           <label className="flex cursor-pointer items-center gap-2 text-sm">
             <input
               type="checkbox"
@@ -231,6 +358,96 @@ export default function FeatureGrid() {
             <Button type="submit" disabled={createFeature.isPending} data-testid="feature-submit">
               {createFeature.isPending ? 'Creating…' : 'Create feature'}
             </Button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* Link to GitHub Branch/PR Modal */}
+      <Modal
+        open={linkModalOpen}
+        onClose={() => setLinkModalOpen(false)}
+        title={`Link "${linkingFeature?.key}" to GitHub`}
+        description="Tie this feature flag directly to code in your repository."
+      >
+        <form onSubmit={handleSaveGithubLink} className="space-y-4">
+          {linkError ? (
+            <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+              {linkError}
+            </div>
+          ) : null}
+
+          <div className="space-y-2">
+            <Label htmlFor="link-branch">Branch name</Label>
+            {ghBranches && ghBranches.length > 0 ? (
+              <select
+                id="link-branch"
+                value={linkBranch}
+                onChange={(e) => setLinkBranch(e.target.value)}
+                className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-xs font-mono ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                <option value="">-- No branch --</option>
+                {ghBranches.map((b) => (
+                  <option key={b.name} value={b.name}>
+                    {b.name}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <Input
+                id="link-branch"
+                placeholder="e.g. feature/new-checkout"
+                value={linkBranch}
+                onChange={(e) => setLinkBranch(e.target.value)}
+                className="font-mono text-xs"
+              />
+            )}
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="link-pr">Pull Request number (optional)</Label>
+            <Input
+              id="link-pr"
+              type="number"
+              placeholder="e.g. 42"
+              value={linkPrNumber}
+              onChange={(e) => setLinkPrNumber(e.target.value)}
+              className="font-mono text-xs"
+            />
+          </div>
+
+          <div className="flex items-center justify-between pt-2">
+            {linkingFeature?.githubBranch || linkingFeature?.githubPrNumber ? (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="text-destructive text-xs"
+                onClick={() => {
+                  setLinkBranch('');
+                  setLinkPrNumber('');
+                }}
+              >
+                Clear link
+              </Button>
+            ) : <span />}
+
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setLinkModalOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                size="sm"
+                disabled={linkFeatureGithub.isPending}
+              >
+                {linkFeatureGithub.isPending ? 'Saving…' : 'Save link'}
+              </Button>
+            </div>
           </div>
         </form>
       </Modal>

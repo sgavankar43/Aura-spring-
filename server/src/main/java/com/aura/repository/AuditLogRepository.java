@@ -11,4 +11,5 @@ import java.util.UUID;
 @Repository
 public interface AuditLogRepository extends JpaRepository<AuditLog, UUID> {
     Page<AuditLog> findByProjectIdOrderByCreatedAtDesc(UUID projectId, Pageable pageable);
+    java.util.List<AuditLog> findByProjectIdOrderByCreatedAtDesc(UUID projectId);
 }

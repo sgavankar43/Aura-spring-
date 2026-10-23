@@ -13,6 +13,7 @@ import Landing from '@/pages/Landing';
 import Login from '@/pages/Login';
 import NotFound from '@/pages/NotFound';
 import ProjectDetail from '@/pages/ProjectDetail';
+import ProjectGithub from '@/pages/ProjectGithub';
 import ProjectList from '@/pages/ProjectList';
 import ProjectSettings from '@/pages/ProjectSettings';
 import Register from '@/pages/Register';
@@ -89,6 +90,7 @@ export default function App() {
                   <Route path="/projects/:id" element={<ProjectDetail />}>
                     <Route index element={<FeatureGrid />} />
                     <Route path="environments" element={<EnvironmentsPage />} />
+                    <Route path="github" element={<ProjectGithub />} />
                     <Route path="audit" element={<AuditLog />} />
                     <Route path="settings" element={<ProjectSettings />} />
                   </Route>

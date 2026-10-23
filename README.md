@@ -139,12 +139,23 @@ Upon startup, seed accounts and initial sample project data are automatically pr
 | `PATCH` | `/api/projects/{id}/flags/{envSlug}/{key}` | Toggle feature flag status for environment | Yes |
 | `POST` | `/api/projects/{id}/environments` | Create additional environment for project | Yes |
 | `GET` | `/api/projects/{id}/audit-logs` | Retrieve paginated audit logs for project | Yes |
+| `GET` | `/api/projects/{id}/audit-logs/export` | Export audit trail as CSV or JSON (`?format=csv\|json`) | Yes |
+| `POST` | `/api/projects/{id}/github/connect` | Connect project to GitHub repository with optional PAT | Yes |
+| `GET` | `/api/projects/{id}/github/status` | Retrieve GitHub repository sync status & metrics | Yes |
+| `DELETE` | `/api/projects/{id}/github/disconnect` | Disconnect project from GitHub repository | Yes |
+| `GET` | `/api/projects/{id}/github/branches` | List repository branches & commit SHAs | Yes |
+| `GET` | `/api/projects/{id}/github/tags` | List repository tags, versions & release packages | Yes |
+| `GET` | `/api/projects/{id}/github/commits` | Retrieve commit history for branch (`?branch=main&limit=30`) | Yes |
+| `GET` | `/api/projects/{id}/github/tree` | Interactive file tree and source code explorer | Yes |
+| `GET` | `/api/projects/{id}/github/pulls` | List repository pull requests (`?state=open\|closed\|all`) | Yes |
+| `PATCH` | `/api/projects/{id}/features/{featureId}/github` | Link / unlink feature flag to GitHub branch and PR | Yes |
 
 ---
 
 ## 🛠️ Verification & Quality Checks
 
 - **Backend compilation**: `cd server && ./mvnw compile`
+- **Backend automated tests**: `cd server && ./mvnw test`
 - **Frontend compilation**: `cd client && npm run build`
 
 ---

@@ -62,6 +62,9 @@ export default function ProjectDetail() {
         <NavLink to="environments" className={tabClass} data-testid="tab-environments">
           Environments
         </NavLink>
+        <NavLink to="github" className={tabClass} data-testid="tab-github">
+          GitHub
+        </NavLink>
         <NavLink to="audit" className={tabClass} data-testid="tab-audit">
           Audit log
         </NavLink>

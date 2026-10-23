@@ -46,6 +46,8 @@ CREATE TABLE IF NOT EXISTS features (
     name VARCHAR(255) NOT NULL,
     description TEXT,
     default_enabled BOOLEAN NOT NULL DEFAULT FALSE,
+    github_branch VARCHAR(255),
+    github_pr_number INT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT idx_feature_project_key UNIQUE (project_id, key)
@@ -74,8 +76,22 @@ CREATE TABLE IF NOT EXISTS audit_logs (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
+-- GitHub Integrations Table
+CREATE TABLE IF NOT EXISTS github_integrations (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    project_id UUID NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+    repo_owner VARCHAR(255) NOT NULL,
+    repo_name VARCHAR(255) NOT NULL,
+    access_token TEXT,
+    default_branch VARCHAR(255) NOT NULL DEFAULT 'main',
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT uq_github_project UNIQUE (project_id)
+);
+
 -- Indexes for performance
 CREATE INDEX IF NOT EXISTS idx_projects_user ON projects(user_id);
 CREATE INDEX IF NOT EXISTS idx_environments_project ON environments(project_id);
 CREATE INDEX IF NOT EXISTS idx_features_project ON features(project_id);
 CREATE INDEX IF NOT EXISTS idx_audit_logs_project_date ON audit_logs(project_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_github_integrations_project ON github_integrations(project_id);

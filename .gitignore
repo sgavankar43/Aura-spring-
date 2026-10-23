@@ -37,3 +37,7 @@ Thumbs.db
 # Logs
 *.log
 logs/
+
+# Separate client test website
+testing-website/
+

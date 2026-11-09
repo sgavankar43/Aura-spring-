@@ -6,17 +6,22 @@ import { PageLoader } from '@/components/feedback/PageLoader';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 import { RealTimeProvider } from '@/contexts/RealTimeProvider';
+import Analytics from '@/pages/Analytics';
+import ApiKeys from '@/pages/ApiKeys';
 import AuditLog from '@/pages/AuditLog';
 import EnvironmentsPage from '@/pages/Environments';
 import FeatureGrid from '@/pages/FeatureGrid';
 import Landing from '@/pages/Landing';
 import Login from '@/pages/Login';
 import NotFound from '@/pages/NotFound';
+import Overview from '@/pages/Overview';
 import ProjectDetail from '@/pages/ProjectDetail';
 import ProjectGithub from '@/pages/ProjectGithub';
 import ProjectList from '@/pages/ProjectList';
 import ProjectSettings from '@/pages/ProjectSettings';
 import Register from '@/pages/Register';
+import Team from '@/pages/Team';
+import Templates from '@/pages/Templates';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -89,10 +94,15 @@ export default function App() {
                   <Route path="/projects" element={<ProjectList />} />
                   <Route path="/projects/:id" element={<ProjectDetail />}>
                     <Route index element={<FeatureGrid />} />
+                    <Route path="overview" element={<Overview />} />
                     <Route path="environments" element={<EnvironmentsPage />} />
                     <Route path="github" element={<ProjectGithub />} />
                     <Route path="audit" element={<AuditLog />} />
                     <Route path="settings" element={<ProjectSettings />} />
+                    <Route path="analytics" element={<Analytics />} />
+                    <Route path="api-keys" element={<ApiKeys />} />
+                    <Route path="team" element={<Team />} />
+                    <Route path="templates" element={<Templates />} />
                   </Route>
                 </Route>
 

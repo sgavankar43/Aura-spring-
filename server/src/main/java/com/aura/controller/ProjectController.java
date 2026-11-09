@@ -66,4 +66,14 @@ public class ProjectController {
                 .project(projectService.archiveProject(id, principal))
                 .build());
     }
+
+    @PostMapping("/{id}/rotate-key")
+    public ResponseEntity<ProjectResponse> rotateApiKey(
+            @PathVariable UUID id,
+            @AuthenticationPrincipal UserPrincipal principal
+    ) {
+        return ResponseEntity.ok(ProjectResponse.builder()
+                .project(projectService.rotateApiKey(id, principal))
+                .build());
+    }
 }

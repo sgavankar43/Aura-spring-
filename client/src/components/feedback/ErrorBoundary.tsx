@@ -38,7 +38,7 @@ export class ErrorBoundary extends Component<Props, State> {
             <h1 className="text-xl font-semibold">This view crashed</h1>
             <p className="mt-2 text-sm text-muted-foreground">{this.state.message}</p>
           </div>
-          <Button type="button" onClick={() => this.setState({ hasError: false, message: '' })}>
+          <Button type="button" className="active:translate-y-px" onClick={() => this.setState({ hasError: false, message: '' })}>
             Try again
           </Button>
         </div>

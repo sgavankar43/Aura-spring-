@@ -138,6 +138,22 @@ public class ProjectService {
         return mapToProjectDto(project);
     }
 
+    @Transactional
+    public ProjectDto rotateApiKey(UUID id, UserPrincipal principal) {
+        Project project = projectRepository.findByIdAndArchivedAtIsNull(id)
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Project not found"));
+
+        User user = userRepository.findById(principal.getId()).orElse(null);
+
+        String newApiKey = "aura_pk_live_" + UUID.randomUUID().toString().replace("-", "");
+        project.setApiKey(newApiKey);
+        project = projectRepository.save(project);
+
+        auditLogService.logAction(project, user, "API_KEY_ROTATED", "Project", project.getId().toString(), Map.of("keyPrefix", newApiKey.substring(0, 16)));
+
+        return mapToProjectDto(project);
+    }
+
     public ProjectDto mapToProjectDto(Project project) {
         List<EnvironmentDto> envDtos = environmentRepository.findByProjectIdOrderBySortOrderAsc(project.getId()).stream()
                 .map(env -> EnvironmentDto.builder()

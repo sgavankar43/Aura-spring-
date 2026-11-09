@@ -7,7 +7,7 @@ export function PageLoader({ className }: { className?: string }) {
       className={cn('flex min-h-[12rem] flex-col items-center justify-center gap-3', className)}
     >
       <div
-        className="h-9 w-9 animate-spin rounded-full border-2 border-muted border-t-primary"
+        className="h-9 w-9 motion-safe:animate-spin rounded-full border-2 border-border border-t-primary"
         aria-hidden
       />
       <p className="text-sm text-muted-foreground">Loading…</p>

@@ -79,7 +79,7 @@ export default function EnvironmentsPage() {
                 <div className="flex items-center gap-2">
                   <span
                     className="h-2.5 w-2.5 shrink-0 rounded-full ring-2 ring-background"
-                    style={{ backgroundColor: env.color ?? '#6B7280' }}
+                    style={{ backgroundColor: env.color || 'var(--color-muted)' }}
                   />
                   <CardTitle className="text-base">{env.name}</CardTitle>
                 </div>

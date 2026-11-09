@@ -222,12 +222,12 @@ export default function AuditLog() {
         </div>
       ) : null}
 
-      <div className="rounded-xl border bg-card p-6 shadow-sm">
+      <div className="rounded-lg border border-border bg-card p-6">
         {logs.length === 0 ? (
-          <div className="py-12 text-center text-muted-foreground">No activity recorded yet.</div>
+          <div className="py-12 text-center text-sm text-muted-foreground">No activity recorded yet.</div>
         ) : (
           <>
-            <div className="relative space-y-8 before:absolute before:inset-0 before:ml-5 before:h-full before:w-0.5 before:-translate-x-px before:bg-gradient-to-b before:from-transparent before:via-border before:to-transparent md:before:mx-auto md:before:translate-x-0">
+            <div className="relative space-y-6 before:absolute before:inset-0 before:left-3.5 before:h-full before:w-px before:bg-border">
               {logs.map((log) => {
                 const userLabel = log.userName
                   ? `${log.userName} (${log.userEmail ?? 'user'})`
@@ -240,22 +240,22 @@ export default function AuditLog() {
                 return (
                   <div
                     key={log.id}
-                    className="relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse"
+                    className="relative flex items-start gap-3 pl-8"
                     data-testid={`audit-entry-${log.id}`}
                   >
-                    <div className="z-10 flex h-10 w-10 shrink-0 items-center justify-center rounded-full border bg-card shadow transition-colors md:order-1 md:group-odd:-translate-x-1/2 md:group-even:translate-x-1/2">
+                    <div className="absolute left-1.5 top-1 z-10 flex h-5 w-5 -translate-x-1/2 items-center justify-center rounded-full border border-border bg-paper-2 text-foreground">
                       {getLogIcon(log.action)}
                     </div>
-                    <div className="w-[calc(100%-4rem)] rounded-xl border bg-card/70 p-4 shadow-sm backdrop-blur-sm transition-all hover:bg-card md:w-[calc(50%-2.5rem)]">
+                    <div className="min-w-0 flex-1">
                       <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
-                        <span className="text-xs font-semibold text-foreground/90">
+                        <span className="text-xs font-medium text-foreground">
                           {userLabel}
                         </span>
-                        <time className="text-xs text-muted-foreground">
+                        <time className="text-[11px] font-mono text-muted-foreground">
                           {new Date(log.createdAt).toLocaleString()}
                         </time>
                       </div>
-                      <div className="text-sm">{formatMessage(log)}</div>
+                      <div className="text-xs text-ink-2">{formatMessage(log)}</div>
                     </div>
                   </div>
                 );

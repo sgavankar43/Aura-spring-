@@ -56,7 +56,7 @@ export function Modal({
       ref={dialogRef}
       data-testid={testId}
       className={cn(
-        'fixed left-1/2 top-1/2 z-50 w-full max-w-lg -translate-x-1/2 -translate-y-1/2 cyber-chamfer border border-accent bg-background p-0 text-foreground shadow-neon-lg [&::backdrop]:bg-black/80 [&::backdrop]:backdrop-blur-sm',
+        'fixed left-1/2 top-1/2 z-50 w-full max-w-lg -translate-x-1/2 -translate-y-1/2 rounded-lg border border-border bg-card p-0 text-foreground shadow-2xl [&::backdrop]:bg-black/70',
         className,
       )}
       onClick={(e) => {
@@ -65,32 +65,25 @@ export function Modal({
         }
       }}
     >
-      <div className="absolute top-0 left-0 right-0 h-6 bg-muted/50 border-b border-border flex items-center px-4 gap-2 z-10 cyber-chamfer-sm">
-        <div className="w-2.5 h-2.5 rounded-full bg-destructive/80"></div>
-        <div className="w-2.5 h-2.5 rounded-full bg-yellow-500/80"></div>
-        <div className="w-2.5 h-2.5 rounded-full bg-success/80"></div>
-      </div>
-      <div className="flex flex-col border-b border-border px-6 py-4 pt-10">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <h2 className="text-xl font-heading tracking-widest text-accent uppercase leading-none drop-shadow-glow">
-              {title}
-            </h2>
-            {description ? (
-              <p className="mt-2 text-sm text-muted-foreground font-mono">{description}</p>
-            ) : null}
-          </div>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="shrink-0 text-accent"
-            onClick={onClose}
-            aria-label="Close dialog"
-          >
-            <X className="h-5 w-5 drop-shadow-[0_0_4px_currentColor]" />
-          </Button>
+      <div className="flex items-start justify-between border-b border-border px-6 py-4">
+        <div>
+          <h2 className="text-base font-medium text-foreground">
+            {title}
+          </h2>
+          {description ? (
+            <p className="mt-1 text-xs text-muted-foreground">{description}</p>
+          ) : null}
         </div>
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8 text-muted-foreground hover:text-foreground"
+          onClick={onClose}
+          aria-label="Close dialog"
+        >
+          <X className="h-4 w-4" />
+        </Button>
       </div>
       <div className="px-6 py-4">{children}</div>
     </dialog>

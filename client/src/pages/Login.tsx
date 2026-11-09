@@ -1,9 +1,7 @@
-import { Shield } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { AuthShell } from '@/components/auth/AuthShell';
 import { Button } from '@/components/ui/Button';
-import { Card, CardContent } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
 import { Label } from '@/components/ui/Label';
 import { useAuth } from '@/contexts/AuthContext';
@@ -56,78 +54,69 @@ export default function Login() {
 
   return (
     <AuthShell
-      title="Welcome back"
-      subtitle="Sign in to manage feature flags and environments across your systems."
+      title="Sign in to Aura"
+      subtitle="Enter your credentials to access the feature flag control plane."
     >
-      <Card variant="terminal" className="shadow-neon-sm" data-testid="login-card">
-        <CardContent className="p-8 pt-4">
-          <div className="mb-6 flex justify-center">
-            <div className="flex h-12 w-12 items-center justify-center border border-accent bg-accent/10 text-accent cyber-chamfer-sm">
-              <Shield className="h-6 w-6" aria-hidden />
-            </div>
+      <div data-testid="login-card">
+        {flash ? (
+          <div className="mb-4 rounded-md border border-success/30 bg-success/10 px-3.5 py-2.5 text-xs text-foreground">
+            {flash}
           </div>
+        ) : null}
 
-          {flash ? (
-            <div className="mb-4 cyber-chamfer-sm border border-success bg-success/10 px-4 py-3 font-mono text-sm uppercase text-success">
-              {flash}
-            </div>
-          ) : null}
+        {error ? (
+          <div className="mb-4 rounded-md border border-destructive/30 bg-destructive/10 px-3.5 py-2.5 text-xs text-destructive">
+            {error}
+          </div>
+        ) : null}
 
-          {error ? (
-            <div className="mb-4 cyber-chamfer-sm border border-destructive bg-destructive/10 px-4 py-3 font-mono text-sm uppercase text-destructive">
-              {error}
-            </div>
-          ) : null}
+        <form onSubmit={(e) => void handleSubmit(e)} className="space-y-4">
+          <div className="space-y-1.5">
+            <Label htmlFor="login-email">Email</Label>
+            <Input
+              id="login-email"
+              type="email"
+              required
+              autoComplete="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="admin@aura.dev"
+              data-testid="login-email"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="login-password">Password</Label>
+            <Input
+              id="login-password"
+              type="password"
+              required
+              autoComplete="current-password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="••••••••"
+              data-testid="login-password"
+            />
+          </div>
+          <Button
+            type="submit"
+            className="w-full mt-2"
+            disabled={loading}
+            data-testid="login-submit"
+          >
+            {loading ? 'Signing in…' : 'Sign in'}
+          </Button>
+        </form>
 
-          <form onSubmit={(e) => void handleSubmit(e)} className="space-y-6">
-            <div className="space-y-3">
-              <Label htmlFor="login-email">Email</Label>
-              <Input
-                id="login-email"
-                type="email"
-                required
-                autoComplete="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="admin@example.com"
-                data-testid="login-email"
-              />
-            </div>
-            <div className="space-y-3">
-              <Label htmlFor="login-password">Password</Label>
-              <Input
-                id="login-password"
-                type="password"
-                required
-                autoComplete="current-password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
-                data-testid="login-password"
-              />
-            </div>
-            <Button
-              type="submit"
-              variant="glitch"
-              className="w-full mt-4"
-              disabled={loading}
-              data-testid="login-submit"
-            >
-              {loading ? 'SIGNING IN...' : 'SIGN IN'}
-            </Button>
-          </form>
-
-          <p className="mt-8 text-center text-sm font-mono text-muted-foreground uppercase">
-            No account?{' '}
-            <Link
-              to="/register"
-              className="font-bold text-accent hover:underline hover:text-accentSecondary transition-colors"
-            >
-              Request Access
-            </Link>
-          </p>
-        </CardContent>
-      </Card>
+        <p className="mt-6 text-center text-xs text-muted-foreground">
+          Don’t have an account?{' '}
+          <Link
+            to="/register"
+            className="font-medium text-foreground hover:underline transition-colors"
+          >
+            Create account
+          </Link>
+        </p>
+      </div>
     </AuthShell>
   );
 }

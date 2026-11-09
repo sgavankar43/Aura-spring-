@@ -130,3 +130,12 @@ export interface GithubPullRequest {
   htmlUrl?: string | null;
   draft: boolean;
 }
+
+export interface ProjectMember {
+  id: string;
+  projectId: string;
+  name: string;
+  email: string;
+  role: 'ADMIN' | 'EDITOR' | 'VIEWER';
+  createdAt: string;
+}

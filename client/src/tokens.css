@@ -1,0 +1,100 @@
+/* Hallmark · console · dark 17 250 · Host Grotesk / Atkinson Hyperlegible Mono */
+:root {
+  --color-paper: oklch(98.5% 0.004 85);
+  --color-paper-2: oklch(96% 0.006 85);
+  --color-paper-3: oklch(92% 0.008 85);
+  --color-ink: oklch(20% 0.010 60);
+  --color-ink-2: oklch(36% 0.012 60);
+  --color-muted: oklch(50% 0.015 60);
+  --color-rule: oklch(88% 0.008 85);
+  --color-rule-2: oklch(80% 0.012 85);
+  --color-accent: oklch(54% 0.14 70);
+  --color-accent-ink: oklch(99% 0.003 85);
+  --color-accent-soft: oklch(93% 0.04 70);
+  --color-focus: oklch(54% 0.14 70);
+  --color-cool: oklch(52% 0.14 250);
+  --color-cool-soft: oklch(93% 0.04 250);
+  --color-ok: oklch(52% 0.15 150);
+  --color-ok-soft: oklch(93% 0.03 150);
+  --color-bad: oklch(55% 0.17 25);
+  --color-bad-soft: oklch(93% 0.035 25);
+
+  --font-display: "Host Grotesk", ui-sans-serif, system-ui, sans-serif;
+  --font-body: var(--font-display);
+  --font-outlier: "Atkinson Hyperlegible Mono", "JetBrains Mono", ui-monospace, monospace;
+  --radius-card: 10px;
+  --radius-pill: 6px;
+  --radius-input: 6px;
+  --rule-hair: 1px;
+  --shadow-card: none;
+  --tracking-display: -0.03em;
+  --display-weight: 500;
+
+  /* Semantic UI mappings for Light Mode */
+  --background: var(--color-paper);
+  --foreground: var(--color-ink);
+  --card: var(--color-paper-2);
+  --card-foreground: var(--color-ink);
+  --popover: var(--color-paper-2);
+  --popover-foreground: var(--color-ink);
+  --primary: var(--color-accent);
+  --primary-foreground: var(--color-accent-ink);
+  --secondary: var(--color-paper-3);
+  --secondary-foreground: var(--color-ink);
+  --muted: var(--color-paper-3);
+  --muted-foreground: var(--color-muted);
+  --accent: var(--color-cool);
+  --accent-foreground: var(--color-paper);
+  --success: var(--color-ok);
+  --success-foreground: var(--color-paper);
+  --destructive: var(--color-bad);
+  --destructive-foreground: var(--color-ink);
+  --border: var(--color-rule);
+  --input: var(--color-paper-2);
+  --ring: var(--color-focus);
+  --radius: 8px;
+}
+
+.dark {
+  /* Dark mode (Console "graphite" colourway) */
+  --color-paper: oklch(17% 0.008 250);
+  --color-paper-2: oklch(21% 0.009 250);
+  --color-paper-3: oklch(13.5% 0.007 250);
+  --color-ink: oklch(95% 0.005 250);
+  --color-ink-2: oklch(83% 0.008 250);
+  --color-muted: oklch(71% 0.01 250);
+  --color-rule: oklch(31% 0.01 250);
+  --color-rule-2: oklch(42% 0.012 250);
+  --color-accent: oklch(82% 0.15 80);
+  --color-accent-ink: oklch(18% 0.04 75);
+  --color-accent-soft: oklch(29% 0.05 80);
+  --color-focus: oklch(82% 0.15 80);
+  --color-cool: oklch(77% 0.12 245);
+  --color-cool-soft: oklch(29% 0.05 245);
+  --color-ok: oklch(76% 0.15 150);
+  --color-ok-soft: oklch(24.5% 0.03 150);
+  --color-bad: oklch(70% 0.17 25);
+  --color-bad-soft: oklch(24.5% 0.035 25);
+
+  --background: var(--color-paper);
+  --foreground: var(--color-ink);
+  --card: var(--color-paper-2);
+  --card-foreground: var(--color-ink);
+  --popover: var(--color-paper-2);
+  --popover-foreground: var(--color-ink);
+  --primary: var(--color-accent);
+  --primary-foreground: var(--color-accent-ink);
+  --secondary: var(--color-paper-2);
+  --secondary-foreground: var(--color-ink);
+  --muted: var(--color-paper-3);
+  --muted-foreground: var(--color-muted);
+  --accent: var(--color-cool);
+  --accent-foreground: var(--color-paper);
+  --success: var(--color-ok);
+  --success-foreground: var(--color-paper);
+  --destructive: var(--color-bad);
+  --destructive-foreground: var(--color-ink);
+  --border: var(--color-rule);
+  --input: var(--color-paper-3);
+  --ring: var(--color-focus);
+}

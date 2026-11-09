@@ -9,18 +9,14 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 
 const Button = forwardRef<HTMLButtonElement, ButtonProps>(
   ({ className, variant, size, type = 'button', children, ...props }, ref) => {
-    const isStringChild = typeof children === 'string';
-    const displayText = isStringChild ? `[ ${children} ]` : children;
-
     return (
       <button
         ref={ref}
         type={type}
         className={cn(buttonVariants({ variant, size, className }))}
-        data-text={variant === 'glitch' && isStringChild ? `[ ${children} ]` : undefined}
         {...props}
       >
-        {displayText}
+        {children}
       </button>
     );
   },

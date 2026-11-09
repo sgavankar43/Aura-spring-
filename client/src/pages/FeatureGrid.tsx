@@ -151,11 +151,11 @@ export default function FeatureGrid() {
       <div className="overflow-hidden rounded-xl border bg-card shadow-sm">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm" data-testid="feature-table">
-            <thead className="border-b bg-muted/40 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            <thead className="border-b border-border bg-paper-2 text-xs font-medium text-muted-foreground">
               <tr>
                 <th className="px-4 py-3 md:px-6">Feature</th>
                 {isGhConnected ? (
-                  <th className="px-3 py-3 text-center text-xs font-medium uppercase tracking-wider">
+                  <th className="px-3 py-3 text-center text-xs font-medium">
                     GitHub Code Link
                   </th>
                 ) : null}
@@ -164,7 +164,7 @@ export default function FeatureGrid() {
                     <span className="inline-flex items-center justify-center gap-2">
                       <span
                         className="h-2 w-2 rounded-full ring-2 ring-background"
-                        style={{ backgroundColor: env.color ?? '#6B7280' }}
+                        style={{ backgroundColor: env.color || 'var(--color-muted)' }}
                       />
                       {env.name}
                     </span>

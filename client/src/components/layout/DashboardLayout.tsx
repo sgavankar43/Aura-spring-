@@ -1,50 +1,27 @@
 import {
   Activity,
+  BarChart2,
   Boxes,
   Flag,
   FolderGit2,
+  Key,
   LayoutDashboard,
+  LayoutGrid,
   LogOut,
   Menu,
-  Moon,
   ScrollText,
   Settings,
-  Sun,
+  Shapes,
+  Users,
   X,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/Button';
+import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { useAuth } from '@/contexts/AuthContext';
 import { useHealth } from '@/hooks/queries';
 import { cn } from '@/lib/utils';
-function ThemeToggle() {
-  const [dark, setDark] = useState(() => document.documentElement.classList.contains('dark'));
-
-  useEffect(() => {
-    setDark(document.documentElement.classList.contains('dark'));
-  }, []);
-
-  const toggle = () => {
-    const next = !document.documentElement.classList.contains('dark');
-    document.documentElement.classList.toggle('dark', next);
-    localStorage.setItem('aura-theme', next ? 'dark' : 'light');
-    setDark(next);
-  };
-
-  return (
-    <Button
-      type="button"
-      variant="ghost"
-      size="icon"
-      onClick={toggle}
-      aria-label={dark ? 'Switch to light mode' : 'Switch to dark mode'}
-      data-testid="theme-toggle"
-    >
-      {dark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-    </Button>
-  );
-}
 
 function HealthBadge() {
   const { data, isError, isPending } = useHealth();
@@ -52,11 +29,11 @@ function HealthBadge() {
   if (isPending) {
     return (
       <span
-        className="inline-flex items-center gap-2 text-xs text-muted-foreground"
+        className="inline-flex items-center gap-1.5 text-xs text-muted-foreground"
         data-testid="health-status"
       >
-        <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-muted-foreground" />
-        Checking API…
+        <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground animate-pulse" />
+        Checking API
       </span>
     );
   }
@@ -64,7 +41,7 @@ function HealthBadge() {
   if (isError || !data) {
     return (
       <span
-        className="inline-flex items-center gap-2 text-xs text-destructive"
+        className="inline-flex items-center gap-1.5 text-xs text-destructive"
         data-testid="health-status"
       >
         <span className="h-1.5 w-1.5 rounded-full bg-destructive" />
@@ -78,23 +55,23 @@ function HealthBadge() {
   return (
     <span
       className={cn(
-        'inline-flex items-center gap-2 text-xs',
-        healthy ? 'text-muted-foreground' : 'text-amber-600 dark:text-amber-400',
+        'inline-flex items-center gap-1.5 text-xs',
+        healthy ? 'text-muted-foreground' : 'text-amber-500',
       )}
       data-testid="health-status"
     >
-      <Activity className={cn('h-3.5 w-3.5', healthy && 'text-success')} />
-      {healthy ? 'API healthy' : `Status: ${data.status ?? 'unknown'}`}
+      <Activity className={cn('h-3.5 w-3.5', healthy ? 'text-emerald-500' : 'text-amber-500')} />
+      {healthy ? 'API operational' : `Status: ${data.status ?? 'unknown'}`}
     </span>
   );
 }
 
 const navLinkClass = ({ isActive }: { isActive: boolean }) =>
   cn(
-    'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
+    'flex items-center gap-2.5 rounded-md px-3 py-2 text-xs font-medium transition-colors duration-150',
     isActive
-      ? 'bg-primary text-primary-foreground'
-      : 'text-muted-foreground hover:bg-muted hover:text-foreground',
+      ? 'bg-primary text-primary-foreground font-semibold shadow-sm'
+      : 'text-muted-foreground hover:bg-paper hover:text-foreground',
   );
 
 export default function DashboardLayout() {
@@ -115,7 +92,7 @@ export default function DashboardLayout() {
       {mobileNavOpen ? (
         <button
           type="button"
-          className="fixed inset-0 z-40 bg-black/50 md:hidden"
+          className="fixed inset-0 z-40 bg-black/60 md:hidden"
           aria-label="Close menu"
           onClick={() => setMobileNavOpen(false)}
         />
@@ -123,17 +100,17 @@ export default function DashboardLayout() {
 
       <aside
         className={cn(
-          'fixed inset-y-0 left-0 z-50 flex w-64 flex-col border-r bg-card/80 backdrop-blur-xl transition-transform md:static md:translate-x-0',
+          'fixed inset-y-0 left-0 z-50 flex w-60 flex-col border-r border-border bg-card transition-transform md:static md:translate-x-0',
           mobileNavOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0',
         )}
         data-testid="sidebar"
       >
-        <div className="flex items-center justify-between border-b border-border/60 p-5 md:block">
+        <div className="flex items-center justify-between border-b border-border p-4 md:block">
           <div>
-            <h1 className="bg-gradient-to-r from-primary to-accent bg-clip-text text-xl font-bold text-transparent">
-              Aura
+            <h1 className="text-sm font-semibold tracking-tight text-foreground">
+              Aura Control Plane
             </h1>
-            <p className="mt-0.5 text-xs text-muted-foreground">Feature control plane</p>
+            <p className="text-[11px] text-muted-foreground">Feature flag coordination</p>
           </div>
           <Button
             type="button"
@@ -143,7 +120,7 @@ export default function DashboardLayout() {
             onClick={() => setMobileNavOpen(false)}
             aria-label="Close sidebar"
           >
-            <X className="h-5 w-5" />
+            <X className="h-4 w-4" />
           </Button>
         </div>
 
@@ -155,11 +132,19 @@ export default function DashboardLayout() {
 
           {insideProject ? (
             <>
-              <div className="my-2 border-t border-border/60 pt-2">
-                <p className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                  This project
+              <div className="my-2 border-t border-border pt-2">
+                <p className="px-3 pb-1 text-[11px] font-medium text-muted-foreground">
+                  Project navigation
                 </p>
               </div>
+              <NavLink
+                to={`/projects/${projectId}/overview`}
+                className={navLinkClass}
+                data-testid="nav-overview"
+              >
+                <LayoutGrid className="h-4 w-4 shrink-0" />
+                Overview
+              </NavLink>
               <NavLink
                 to={`/projects/${projectId}`}
                 className={navLinkClass}
@@ -170,6 +155,14 @@ export default function DashboardLayout() {
                 Feature flags
               </NavLink>
               <NavLink
+                to={`/projects/${projectId}/analytics`}
+                className={navLinkClass}
+                data-testid="nav-analytics"
+              >
+                <BarChart2 className="h-4 w-4 shrink-0" />
+                Analytics
+              </NavLink>
+              <NavLink
                 to={`/projects/${projectId}/environments`}
                 className={navLinkClass}
                 data-testid="nav-environments"
@@ -178,12 +171,36 @@ export default function DashboardLayout() {
                 Environments
               </NavLink>
               <NavLink
+                to={`/projects/${projectId}/api-keys`}
+                className={navLinkClass}
+                data-testid="nav-api-keys"
+              >
+                <Key className="h-4 w-4 shrink-0" />
+                API Keys
+              </NavLink>
+              <NavLink
                 to={`/projects/${projectId}/github`}
                 className={navLinkClass}
                 data-testid="nav-github"
               >
                 <FolderGit2 className="h-4 w-4 shrink-0" />
-                GitHub
+                GitHub repository
+              </NavLink>
+              <NavLink
+                to={`/projects/${projectId}/templates`}
+                className={navLinkClass}
+                data-testid="nav-templates"
+              >
+                <Shapes className="h-4 w-4 shrink-0" />
+                Templates
+              </NavLink>
+              <NavLink
+                to={`/projects/${projectId}/team`}
+                className={navLinkClass}
+                data-testid="nav-team"
+              >
+                <Users className="h-4 w-4 shrink-0" />
+                Team
               </NavLink>
               <NavLink
                 to={`/projects/${projectId}/audit`}
@@ -199,50 +216,50 @@ export default function DashboardLayout() {
                 data-testid="nav-settings"
               >
                 <Settings className="h-4 w-4 shrink-0" />
-                Settings
+                Project settings
               </NavLink>
             </>
           ) : null}
         </nav>
 
-        <div className="border-t border-border/60 p-3">
-          <div className="flex items-center gap-2 rounded-lg bg-muted/40 p-2">
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/15 text-sm font-semibold text-primary">
+        <div className="border-t border-border p-3">
+          <div className="flex items-center gap-2 rounded-md bg-paper p-2 border border-border">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded bg-primary text-xs font-semibold text-primary-foreground">
               {user?.name.charAt(0).toUpperCase()}
             </div>
             <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-medium">{user?.name}</p>
-              <p className="truncate text-xs text-muted-foreground">{user?.email}</p>
+              <p className="truncate text-xs font-medium text-foreground">{user?.name}</p>
+              <p className="truncate text-[11px] text-muted-foreground">{user?.email}</p>
             </div>
             <Button
               type="button"
               variant="ghost"
               size="icon"
-              className="shrink-0 text-muted-foreground hover:text-destructive"
+              className="h-7 w-7 shrink-0 text-muted-foreground hover:text-destructive"
               onClick={logout}
               title="Sign out"
               data-testid="logout"
             >
-              <LogOut className="h-4 w-4" />
+              <LogOut className="h-3.5 w-3.5" />
             </Button>
           </div>
         </div>
       </aside>
 
       <div className="flex min-h-screen min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b border-border/60 bg-background/80 px-4 backdrop-blur-md md:h-16 md:px-8">
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="md:hidden"
-            onClick={() => setMobileNavOpen(true)}
-            aria-label="Open menu"
-            data-testid="mobile-menu"
-          >
-            <Menu className="h-5 w-5" />
-          </Button>
-          <div className="flex flex-1 flex-wrap items-center gap-3">
+        <header className="sticky top-0 z-30 flex h-14 items-center justify-between border-b border-border bg-background px-4 md:px-8">
+          <div className="flex items-center gap-3">
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="md:hidden"
+              onClick={() => setMobileNavOpen(true)}
+              aria-label="Open menu"
+              data-testid="mobile-menu"
+            >
+              <Menu className="h-4 w-4" />
+            </Button>
             <HealthBadge />
           </div>
           <ThemeToggle />

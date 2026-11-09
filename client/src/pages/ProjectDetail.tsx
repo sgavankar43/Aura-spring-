@@ -59,11 +59,26 @@ export default function ProjectDetail() {
         <NavLink to="." end className={tabClass} data-testid="tab-flags">
           Feature flags
         </NavLink>
+        <NavLink to="overview" className={tabClass} data-testid="tab-overview">
+          Overview
+        </NavLink>
+        <NavLink to="analytics" className={tabClass} data-testid="tab-analytics">
+          Analytics
+        </NavLink>
         <NavLink to="environments" className={tabClass} data-testid="tab-environments">
           Environments
         </NavLink>
+        <NavLink to="api-keys" className={tabClass} data-testid="tab-api-keys">
+          API Keys
+        </NavLink>
         <NavLink to="github" className={tabClass} data-testid="tab-github">
           GitHub
+        </NavLink>
+        <NavLink to="templates" className={tabClass} data-testid="tab-templates">
+          Templates
+        </NavLink>
+        <NavLink to="team" className={tabClass} data-testid="tab-team">
+          Team
         </NavLink>
         <NavLink to="audit" className={tabClass} data-testid="tab-audit">
           Audit log

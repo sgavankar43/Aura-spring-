@@ -10,25 +10,26 @@ export const buttonVariants = ({
   className?: string;
 } = {}) =>
   cn(
-    // Base Cyberpunk Button Styles
-    'inline-flex items-center justify-center gap-2 whitespace-nowrap font-mono uppercase tracking-wider transition-all duration-150 cyber-chamfer-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-50 text-sm font-bold',
+    'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md font-sans text-sm font-medium transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-50 active:translate-y-[0.5px]',
     {
       default:
-        'bg-transparent border-2 border-accent text-accent hover:bg-accent hover:text-background hover:shadow-neon',
+        'bg-primary text-primary-foreground hover:opacity-95 shadow-sm',
       secondary:
-        'bg-transparent border-2 border-secondary text-secondary hover:bg-secondary hover:text-background hover:shadow-neon-secondary',
+        'bg-paper-2 border border-border text-foreground hover:bg-paper-3',
       outline:
-        'border border-border bg-transparent hover:border-accent hover:text-accent hover:shadow-neon',
-      ghost: 'hover:bg-accent/10 hover:text-accent',
+        'border border-border bg-transparent text-foreground hover:bg-paper-2',
+      ghost:
+        'text-muted-foreground hover:bg-paper-2 hover:text-foreground',
       destructive:
-        'bg-transparent border-2 border-destructive text-destructive hover:bg-destructive hover:text-foreground hover:shadow-neon',
-      glitch: 'bg-accent text-background hover:brightness-110 cyber-glitch-text',
+        'bg-destructive text-destructive-foreground hover:opacity-90',
+      glitch:
+        'bg-primary text-primary-foreground hover:opacity-95 shadow-sm',
     }[variant || 'default'],
     {
-      default: 'h-11 px-6 py-2',
-      sm: 'h-9 px-4 text-xs',
-      lg: 'h-12 px-8 text-base',
-      icon: 'h-11 w-11',
+      default: 'h-9 px-4 py-2',
+      sm: 'h-8 px-3 text-xs',
+      lg: 'h-10 px-6 text-sm',
+      icon: 'h-9 w-9',
     }[size || 'default'],
     className,
   );

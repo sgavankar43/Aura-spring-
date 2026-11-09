@@ -12,14 +12,15 @@ export default {
       center: true,
       padding: "2rem",
       screens: {
-        "2xl": "1400px",
+        "2xl": "1280px",
       },
     },
     extend: {
       fontFamily: {
-        sans: ["JetBrains Mono", "Fira Code", "Consolas", "monospace"],
-        mono: ["JetBrains Mono", "Fira Code", "Consolas", "monospace"],
-        heading: ["Orbitron", "Share Tech Mono", "monospace"],
+        sans: ["var(--font-body)", "ui-sans-serif", "system-ui", "sans-serif"],
+        display: ["var(--font-display)", "ui-sans-serif", "system-ui", "sans-serif"],
+        heading: ["var(--font-display)", "ui-sans-serif", "system-ui", "sans-serif"],
+        mono: ["var(--font-outlier)", "ui-monospace", "monospace"],
       },
       colors: {
         border: "var(--border)",
@@ -50,8 +51,6 @@ export default {
         accent: {
           DEFAULT: "var(--accent)",
           foreground: "var(--accent-foreground)",
-          secondary: "var(--accentSecondary)",
-          tertiary: "var(--accentTertiary)"
         },
         popover: {
           DEFAULT: "var(--popover)",
@@ -61,58 +60,28 @@ export default {
           DEFAULT: "var(--card)",
           foreground: "var(--card-foreground)",
         },
-      },
-      boxShadow: {
-        neon: "var(--box-shadow-neon)",
-        "neon-sm": "var(--box-shadow-neon-sm)",
-        "neon-lg": "var(--box-shadow-neon-lg)",
-        "neon-secondary": "var(--box-shadow-neon-secondary)",
-        "neon-tertiary": "var(--box-shadow-neon-tertiary)",
-      },
-      dropShadow: {
-        glitch: "0 0 10px rgba(0, 255, 136, 0.5)",
-        glow: "0 0 20px rgba(0, 255, 136, 0.3)",
+        paper: {
+          DEFAULT: "var(--color-paper)",
+          2: "var(--color-paper-2)",
+          3: "var(--color-paper-3)",
+        },
+        ink: {
+          DEFAULT: "var(--color-ink)",
+          2: "var(--color-ink-2)",
+        },
+        rule: {
+          DEFAULT: "var(--color-rule)",
+          2: "var(--color-rule-2)",
+        },
+        cool: {
+          DEFAULT: "var(--color-cool)",
+          soft: "var(--color-cool-soft)",
+        },
       },
       borderRadius: {
-        lg: "var(--radius)",
-        md: "calc(var(--radius) - 2px)",
-        sm: "calc(var(--radius) - 4px)",
-      },
-      keyframes: {
-        "accordion-down": {
-          from: { height: "0" },
-          to: { height: "var(--radix-accordion-content-height)" },
-        },
-        "accordion-up": {
-          from: { height: "var(--radix-accordion-content-height)" },
-          to: { height: "0" },
-        },
-        blink: {
-          "50%": { opacity: "0" },
-        },
-        glitch: {
-          "0%, 100%": { transform: "translate(0)" },
-          "20%": { transform: "translate(-2px, 2px)" },
-          "40%": { transform: "translate(2px, -2px)" },
-          "60%": { transform: "translate(-1px, -1px)" },
-          "80%": { transform: "translate(1px, 1px)" },
-        },
-        "rgb-shift": {
-          "0%, 100%": { textShadow: "-2px 0 #ff00ff, 2px 0 #00d4ff" },
-          "50%": { textShadow: "2px 0 #ff00ff, -2px 0 #00d4ff" },
-        },
-        scanline: {
-          "0%": { transform: "translateY(-100%)" },
-          "100%": { transform: "translateY(100vh)" },
-        }
-      },
-      animation: {
-        "accordion-down": "accordion-down 0.2s ease-out",
-        "accordion-up": "accordion-up 0.2s ease-out",
-        "blink": "blink 1s step-end infinite",
-        "glitch": "glitch 2s linear infinite",
-        "rgb-shift": "rgb-shift 3s infinite",
-        "scanline": "scanline 10s linear infinite",
+        lg: "var(--radius-card)",
+        md: "calc(var(--radius-card) - 2px)",
+        sm: "calc(var(--radius-card) - 4px)",
       },
     },
   },

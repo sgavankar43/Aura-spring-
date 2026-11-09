@@ -12,35 +12,30 @@ export function AuthShell({
   children: ReactNode;
 }) {
   return (
-    <div data-testid="auth-shell" className="relative min-h-screen overflow-hidden bg-background">
-      <div
-        className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_80%_50%_at_50%_-20%,rgba(0,255,136,0.08),transparent)]"
-        aria-hidden
-      />
-      <div className="relative mx-auto flex min-h-screen max-w-md flex-col justify-center px-4 py-12">
-        <Link
-          to="/login"
-          className="mb-10 flex items-center justify-center gap-2 text-muted-foreground transition-colors hover:text-accent group font-mono tracking-widest"
-        >
-          <span className="flex h-10 w-10 items-center justify-center border-accent border bg-accent/10 text-accent cyber-chamfer-sm group-hover:shadow-neon transition-all duration-300">
-            <Layers className="h-5 w-5" aria-hidden />
-          </span>
-          <span className="text-xl font-bold uppercase text-accent drop-shadow-glow">
-            [ AURA_V.1.0 ]
-          </span>
-        </Link>
-        <div className="text-center">
-          <h1
-            className="text-5xl font-black tracking-tight uppercase cyber-glitch-text pb-2"
-            data-text={title}
+    <div data-testid="auth-shell" className="relative min-h-screen bg-background flex flex-col justify-center px-4 py-12">
+      <div className="mx-auto w-full max-w-sm">
+        <div className="mb-8 flex flex-col items-center text-center">
+          <Link
+            to="/"
+            className="mb-4 inline-flex items-center gap-2 text-foreground hover:opacity-90 transition-opacity"
           >
+            <span className="flex h-8 w-8 items-center justify-center rounded-md border border-border bg-paper-2 text-primary">
+              <Layers className="h-4 w-4" aria-hidden />
+            </span>
+            <span className="text-sm font-semibold tracking-tight text-foreground">
+              Aura
+            </span>
+          </Link>
+          <h1 className="text-xl font-medium tracking-tight text-foreground">
             {title}
           </h1>
-          <p className="mt-4 text-sm font-mono text-accent/80 tracking-widest leading-relaxed uppercase">
-            [ {subtitle} ]
+          <p className="mt-1.5 text-xs text-muted-foreground leading-relaxed">
+            {subtitle}
           </p>
         </div>
-        <div className="mt-10 relative cyber-corners p-[2px]">{children}</div>
+        <div className="rounded-lg border border-border bg-card p-6 shadow-sm">
+          {children}
+        </div>
       </div>
     </div>
   );

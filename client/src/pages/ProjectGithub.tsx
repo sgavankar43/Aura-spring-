@@ -421,7 +421,7 @@ export default function ProjectGithub() {
             >
               {branches.map((b) => (
                 <option key={b.name} value={b.name}>
-                  {b.name} {b.isProtected ? '🔒' : ''}
+                  {b.name}{b.isProtected ? ' (protected)' : ''}
                 </option>
               ))}
             </select>

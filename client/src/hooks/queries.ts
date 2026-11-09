@@ -73,6 +73,18 @@ export function useArchiveProject(projectId: string) {
   });
 }
 
+export function useRotateApiKey(projectId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () =>
+      apiFetch<{ project: Project }>(`/projects/${projectId}/rotate-key`, { method: 'POST' }),
+    onSuccess: (res) => {
+      queryClient.setQueryData(['project', projectId], res.project);
+      queryClient.invalidateQueries({ queryKey: ['projects'] });
+    },
+  });
+}
+
 export function useFeatures(projectId: string) {
   return useQuery({
     queryKey: ['features', projectId],

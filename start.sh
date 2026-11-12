@@ -16,6 +16,14 @@ echo -e "${CYAN}================================================================
 echo -e "${BOLD}${CYAN}      🚀 Aura Feature Flag & Configuration Platform - Local Runner      ${RESET}"
 echo -e "${CYAN}========================================================================${RESET}"
 
+# Load .env if present
+if [ -f ".env" ]; then
+    echo -e "${BLUE}📄 Loading environment configuration from .env...${RESET}"
+    set -a
+    source .env
+    set +a
+fi
+
 # 1. Check prerequisites
 if ! command -v java >/dev/null 2>&1; then
     echo -e "${YELLOW}❌ Error: Java 21+ is required but not found.${RESET}"
@@ -30,18 +38,22 @@ if ! command -v node >/dev/null 2>&1; then
 fi
 echo -e "${GREEN}✅ Node.js runtime:${RESET} $(node -v) / npm $(npm -v)"
 
-# 2. Check and start PostgreSQL
-echo -e "${BLUE}🔍 Checking PostgreSQL database service...${RESET}"
-if ! nc -z localhost 5432 2>/dev/null; then
-    echo -e "${YELLOW}⚡ Starting local PostgreSQL service via Homebrew...${RESET}"
-    brew services start postgresql@18 2>/dev/null || brew services start postgresql@15 2>/dev/null || true
-    sleep 2
-fi
-
-if nc -z localhost 5432 2>/dev/null; then
-    echo -e "${GREEN}✅ PostgreSQL is active on port 5432 (aura_db)${RESET}"
+# 2. Check and start PostgreSQL (if using local database)
+if [[ "$SPRING_DATASOURCE_URL" == *"supabase"* ]]; then
+    echo -e "${GREEN}✅ Database target: Remote Supabase Cloud instance${RESET}"
 else
-    echo -e "${YELLOW}⚠️ Warning: PostgreSQL not reachable on port 5432. Please ensure DB is running.${RESET}"
+    echo -e "${BLUE}🔍 Checking local PostgreSQL database service...${RESET}"
+    if ! nc -z localhost 5432 2>/dev/null; then
+        echo -e "${YELLOW}⚡ Starting local PostgreSQL service via Homebrew...${RESET}"
+        brew services start postgresql@18 2>/dev/null || brew services start postgresql@15 2>/dev/null || true
+        sleep 2
+    fi
+
+    if nc -z localhost 5432 2>/dev/null; then
+        echo -e "${GREEN}✅ PostgreSQL is active on port 5432 (aura_db)${RESET}"
+    else
+        echo -e "${YELLOW}⚠️ Warning: PostgreSQL not reachable on port 5432. Please ensure DB is running.${RESET}"
+    fi
 fi
 
 # 3. Clean up any existing stale processes on ports 8080 and 5173

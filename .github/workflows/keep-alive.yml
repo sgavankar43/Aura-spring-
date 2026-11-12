@@ -1,0 +1,37 @@
+name: Keep Backend Alive
+
+on:
+  schedule:
+    # Runs every 14 minutes (Render sleeps after 15 minutes of inactivity)
+    - cron: '*/14 * * * *'
+  workflow_dispatch: # Allows manual one-click testing from GitHub Actions tab
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Ping Backend Health & Supabase
+        run: |
+          URL="${{ secrets.BACKEND_URL }}"
+          if [ -z "$URL" ]; then
+            echo "⚠️ BACKEND_URL secret is not set yet in GitHub Repository Secrets."
+            echo "Set BACKEND_URL to your Render live backend URL (e.g. https://aura-backend.onrender.com) to activate."
+            exit 0
+          fi
+
+          # Strip trailing slash and ensure protocol
+          URL="${URL%/}"
+          if [[ "$URL" != http* ]]; then
+            URL="https://${URL}"
+          fi
+
+          echo "Pinging ${URL}/health to prevent cold-starts..."
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" "${URL}/health" --max-time 30 || true)
+
+          if [ "$STATUS" -eq 200 ]; then
+            echo "✅ Server and Supabase database are awake and healthy (HTTP 200)."
+          else
+            echo "⚠️ Server responded with HTTP ${STATUS} (may be waking up from sleep)."
+          fi
+

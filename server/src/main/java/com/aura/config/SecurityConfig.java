@@ -48,7 +48,13 @@ public class SecurityConfig {
                 .csrf(AbstractHttpConfigurer::disable)
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/health", "/api/auth/**", "/api/v1/evaluate").permitAll()
+                        .requestMatchers(
+                                "/health",
+                                "/api/auth/**",
+                                "/api/v1/evaluate",
+                                "/api/github/webhook",
+                                "/api/github/app/**"
+                        ).permitAll()
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);

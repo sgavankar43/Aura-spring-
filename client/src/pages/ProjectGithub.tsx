@@ -55,6 +55,7 @@ export default function ProjectGithub() {
   const [tokenInput, setTokenInput] = useState('');
   const [branchInput, setBranchInput] = useState('');
   const [connectError, setConnectError] = useState('');
+  const [showAdvancedToken, setShowAdvancedToken] = useState(false);
 
   // Connected view state
   const [activeTab, setActiveTab] = useState<ActiveTab>('commits');
@@ -156,15 +157,52 @@ export default function ProjectGithub() {
           </p>
         </div>
 
+        {/* 1-Click GitHub App Card */}
+        <div className="rounded-xl border border-primary/30 bg-primary/5 p-6 space-y-4 max-w-2xl shadow-sm">
+          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary text-primary-foreground font-semibold text-xs">
+                  GH
+                </span>
+                <h3 className="text-base font-semibold text-foreground">Aura GitHub App</h3>
+                <span className="rounded bg-primary/10 border border-primary/20 px-2 py-0.5 text-[10px] font-mono text-primary font-medium">
+                  1-Click Setup
+                </span>
+              </div>
+              <p className="text-xs text-muted-foreground leading-relaxed pt-1">
+                Install the official Aura GitHub App on your GitHub account or organization. Grants secure, token-less access to your repositories and enables automatic flag coordination upon pull request merges.
+              </p>
+            </div>
+            <a
+              href="https://github.com/apps/aura-spring/installations/new"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="shrink-0"
+            >
+              <Button size="sm" className="gap-1.5 w-full sm:w-auto shadow-sm">
+                <span>Install Aura App</span>
+                <ExternalLink className="h-3.5 w-3.5" />
+              </Button>
+            </a>
+          </div>
+
+          <div className="border-t border-border/60 pt-3">
+            <p className="text-[11px] text-muted-foreground">
+              After installing the app, enter your repository name below to link it to this project.
+            </p>
+          </div>
+        </div>
+
+        {/* Repository Link Form */}
         <Card className="max-w-2xl">
           <CardHeader>
             <div className="flex items-center gap-2">
               <FolderGit2 className="h-5 w-5 text-foreground" />
-              <CardTitle>Connect Repository</CardTitle>
+              <CardTitle>Link Repository to Project</CardTitle>
             </div>
             <CardDescription>
-              Enter the repository slug (e.g. <code>facebook/react</code>, <code>vercel/next.js</code>
-              , or your private repo).
+              Enter the repository slug (e.g. <code>owner/repo</code>, <code>sgavankar43/Aura-spring-</code>, or your private repo).
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -181,32 +219,12 @@ export default function ProjectGithub() {
                 <Input
                   id="gh-repo"
                   required
-                  placeholder="owner/repo (e.g. torvalds/linux or org/my-app)"
+                  placeholder="e.g. sgavankar43/Aura-spring-"
                   value={repoInput}
                   onChange={(e) => setRepoInput(e.target.value)}
                   className="font-mono text-sm"
                   data-testid="github-repo-input"
                 />
-              </div>
-
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="gh-token">Personal Access Token (optional)</Label>
-                  <span className="text-xs text-muted-foreground">Recommended for private repos</span>
-                </div>
-                <Input
-                  id="gh-token"
-                  type="password"
-                  placeholder="ghp_xxxxxxxxxxxxxxxxxxxx or github_pat_..."
-                  value={tokenInput}
-                  onChange={(e) => setTokenInput(e.target.value)}
-                  className="font-mono text-sm"
-                  data-testid="github-token-input"
-                />
-                <p className="text-xs text-muted-foreground">
-                  Public repos work without a token. Provide a token with <code>repo</code> scope to
-                  access private repositories or increase GitHub rate limits.
-                </p>
               </div>
 
               <div className="space-y-2">
@@ -219,6 +237,38 @@ export default function ProjectGithub() {
                   className="font-mono text-sm"
                 />
               </div>
+
+              {/* Advanced Token Toggle */}
+              <div className="pt-1">
+                <button
+                  type="button"
+                  onClick={() => setShowAdvancedToken(!showAdvancedToken)}
+                  className="text-xs text-muted-foreground hover:text-foreground transition-colors underline underline-offset-2"
+                >
+                  {showAdvancedToken ? 'Hide manual Personal Access Token' : '+ Use custom Personal Access Token (optional)'}
+                </button>
+              </div>
+
+              {showAdvancedToken && (
+                <div className="space-y-2 rounded-lg border border-border bg-paper-2 p-3">
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="gh-token">Personal Access Token</Label>
+                    <span className="text-[10px] text-muted-foreground">For custom scope</span>
+                  </div>
+                  <Input
+                    id="gh-token"
+                    type="password"
+                    placeholder="ghp_xxxxxxxxxxxxxxxxxxxx or github_pat_..."
+                    value={tokenInput}
+                    onChange={(e) => setTokenInput(e.target.value)}
+                    className="font-mono text-sm"
+                    data-testid="github-token-input"
+                  />
+                  <p className="text-[11px] text-muted-foreground">
+                    Only required if not using the GitHub App or for enterprise fine-grained tokens.
+                  </p>
+                </div>
+              )}
 
               <div className="flex justify-end pt-2">
                 <Button

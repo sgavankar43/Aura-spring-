@@ -39,8 +39,8 @@ fi
 echo -e "${GREEN}✅ Node.js runtime:${RESET} $(node -v) / npm $(npm -v)"
 
 # 2. Check and start PostgreSQL (if using local database)
-if [[ "$SPRING_DATASOURCE_URL" == *"supabase"* ]]; then
-    echo -e "${GREEN}✅ Database target: Remote Supabase Cloud instance${RESET}"
+if [[ "$SPRING_DATASOURCE_URL" == *"supabase"* || "$SPRING_DATASOURCE_URL" == *"neon"* ]]; then
+    echo -e "${GREEN}✅ Database target: Remote Cloud PostgreSQL instance${RESET}"
 else
     echo -e "${BLUE}🔍 Checking local PostgreSQL database service...${RESET}"
     if ! nc -z localhost 5432 2>/dev/null; then

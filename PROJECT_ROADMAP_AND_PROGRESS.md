@@ -136,6 +136,15 @@ timeline
      - Created [`StaleFlagService.java`](file:///Users/sahilgavankar/Desktop/MEGA/server/src/main/java/com/aura/service/StaleFlagService.java) computing Tech Debt Score (0 - 100) and classifying flags (`READY_FOR_RETIREMENT`, `DORMANT_INACTIVE`, `IN_ROLLOUT`, `HEALTHY_ACTIVE`).
      - Created **Tech Debt & Stale Flag Scanner** page ([`StaleFlags.tsx`](file:///Users/sahilgavankar/Desktop/MEGA/client/src/pages/StaleFlags.tsx)) with interactive filtering, 1-click archiving, and refactoring PR diff generation.
      - Added 5 automated unit and integration tests in [`GithubBotAndStaleFlagTest.java`](file:///Users/sahilgavankar/Desktop/MEGA/server/src/test/java/com/aura/GithubBotAndStaleFlagTest.java) with 100% pass rate.
+  4. **Branch-Based Feature Workflow & Occupancy Guard:**
+     - Developers develop testing website features on isolated branches (e.g. `feature/fast-checkout-v2`, `feature/ai-copilot-beta`).
+     - Dashboard "+ New feature flag" provides branch selection dropdown strictly excluding `main`/`master` and occupied feature branches.
+     - Automatically suggests feature key and name based on branch naming conventions while allowing custom naming.
+     - Backend validator (`validateBranchForFeature`) strictly prevents default branch linking and cross-flag branch collision.
+  5. **GitHub App Connection Security Safeguard:**
+     - Repositories are strictly accessed and connected through verified Aura GitHub App installations (tracking `GithubAppInstallation` records) or verified write credentials.
+     - Arbitrary public repository connection without app installation is rejected with `403 Forbidden`.
+     - Added `GET /api/projects/{projectId}/github/installed-repositories` and 1-click authorized repository connect cards in project settings.
 
 ### Phase 9: AI Model Context Protocol (MCP) & Enterprise Governance ✅
 * **Objective:** Enable AI agent interoperability (Cursor, Antigravity, Claude Desktop), enforce Four-Eyes change approvals on critical environments, and broadcast signed outbound event webhooks.
@@ -184,6 +193,9 @@ timeline
 | Team & Access Roster | Client state + local storage cache | `/projects/:id/team` | ✅ Production Live |
 | GitHub Repository Explorer | `GET /projects/{id}/github/commits`, `/branches` | `/projects/:id/github` | ✅ Production Live |
 | GitHub App 1-Click Install | `GET /api/github/app/callback` | `/projects/:id/github` | ✅ Production Live |
+| GitHub App Authorized Repos | `GET /projects/{id}/github/installed-repositories` | `/projects/:id/github` (1-Click Connect) | ✅ Production Live |
+| Branch-Based Feature Creation | `POST /projects/{id}/features` (branch validate) | `/projects/:id` (Branch Dropdown) | ✅ Production Live |
+| Default Branch & Occupancy Guard | Automated validator (`validateBranchForFeature`) | Feature Grid & Modal Filters | ✅ Production Live |
 | GitHub PR Webhook Auto-Sync | `POST /api/github/webhook` | Automatic Audit Trail | ✅ Production Live |
 | High-Speed SDK Evaluation | `GET /api/v1/evaluate` | Client SDK (`aura-sdk.js`) | ✅ Production Live |
 | Context Evaluation & Canary | `POST /api/v1/evaluate` | `@aura-flags/client` | ✅ Production Live |

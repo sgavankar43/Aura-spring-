@@ -3,6 +3,7 @@ package com.aura.controller;
 import com.aura.dto.FeatureRequest;
 import com.aura.dto.FeatureRowDto;
 import com.aura.dto.FeaturesResponse;
+import com.aura.dto.FlagTargetingRequest;
 import com.aura.dto.FlagToggleRequest;
 import com.aura.security.UserPrincipal;
 import com.aura.service.FeatureService;
@@ -49,6 +50,18 @@ public class FeatureController {
             @AuthenticationPrincipal UserPrincipal principal
     ) {
         featureService.toggleFlag(projectId, envSlug, key, request.getEnabled(), principal);
+        return ResponseEntity.ok(Map.of("status", "ok"));
+    }
+
+    @PutMapping("/flags/{envSlug}/{key}/targeting")
+    public ResponseEntity<Map<String, String>> updateFlagTargeting(
+            @PathVariable UUID projectId,
+            @PathVariable String envSlug,
+            @PathVariable String key,
+            @Valid @RequestBody FlagTargetingRequest request,
+            @AuthenticationPrincipal UserPrincipal principal
+    ) {
+        featureService.updateFlagTargeting(projectId, envSlug, key, request, principal);
         return ResponseEntity.ok(Map.of("status", "ok"));
     }
 }

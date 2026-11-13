@@ -1,0 +1,24 @@
+{
+  "name": "@aura-flags/client",
+  "version": "1.0.0",
+  "description": "Official TypeScript & JavaScript Client SDK for Aura Distributed Feature Flag Platform",
+  "main": "dist/index.js",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc"
+  },
+  "keywords": [
+    "feature-flags",
+    "remote-config",
+    "aura",
+    "canary",
+    "sse",
+    "realtime"
+  ],
+  "author": "Aura Platform Core Team",
+  "license": "MIT",
+  "devDependencies": {
+    "typescript": "^5.5.3"
+  }
+}

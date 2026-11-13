@@ -76,14 +76,16 @@ model Feature {
 }
 
 model FeatureState {
-  id            String      @id @default(uuid()) @db.Uuid
-  featureId     String      @map("feature_id") @db.Uuid
-  feature       Feature     @relation(fields: [featureId], references: [id], onDelete: Cascade)
-  environmentId String      @map("environment_id") @db.Uuid
-  environment   Environment @relation(fields: [environmentId], references: [id], onDelete: Cascade)
-  enabled       Boolean     @default(false)
-  createdAt     DateTime    @default(now()) @map("created_at")
-  updatedAt     DateTime    @updatedAt @map("updated_at")
+  id                String      @id @default(uuid()) @db.Uuid
+  featureId         String      @map("feature_id") @db.Uuid
+  feature           Feature     @relation(fields: [featureId], references: [id], onDelete: Cascade)
+  environmentId     String      @map("environment_id") @db.Uuid
+  environment       Environment @relation(fields: [environmentId], references: [id], onDelete: Cascade)
+  enabled           Boolean     @default(false)
+  rolloutPercentage Int         @default(100) @map("rollout_percentage")
+  rules             String?     @map("rules")
+  createdAt         DateTime    @default(now()) @map("created_at")
+  updatedAt         DateTime    @updatedAt @map("updated_at")
 
   @@unique([featureId, environmentId], map: "idx_feature_env")
   @@map("feature_states")

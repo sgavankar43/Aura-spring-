@@ -33,6 +33,12 @@ public class FeatureState {
     @Column(nullable = false)
     private Boolean enabled;
 
+    @Column(name = "rollout_percentage", nullable = false)
+    private Integer rolloutPercentage = 100;
+
+    @Column(name = "rules", columnDefinition = "TEXT")
+    private String rules;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
@@ -45,11 +51,13 @@ public class FeatureState {
     }
 
     @Builder
-    public FeatureState(UUID id, Feature feature, Environment environment, Boolean enabled, LocalDateTime createdAt, LocalDateTime updatedAt) {
+    public FeatureState(UUID id, Feature feature, Environment environment, Boolean enabled, Integer rolloutPercentage, String rules, LocalDateTime createdAt, LocalDateTime updatedAt) {
         this.id = id;
         this.feature = feature;
         this.environment = environment;
         this.enabled = enabled;
+        this.rolloutPercentage = rolloutPercentage != null ? rolloutPercentage : 100;
+        this.rules = rules;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
     }

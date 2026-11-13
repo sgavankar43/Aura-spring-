@@ -44,8 +44,7 @@ public class GithubAppWebhookController {
     @PostMapping("/webhook")
     public ResponseEntity<Map<String, Object>> handleGithubWebhook(
             @RequestHeader(value = "X-GitHub-Event", defaultValue = "ping") String event,
-            @RequestBody String rawPayload
-    ) {
+            @RequestBody String rawPayload) {
         log.info("Received GitHub Webhook Event: {}", event);
 
         try {
@@ -75,14 +74,12 @@ public class GithubAppWebhookController {
     public ResponseEntity<Map<String, String>> handleAppCallback(
             @RequestParam(required = false) String code,
             @RequestParam(name = "installation_id", required = false) String installationId,
-            @RequestParam(name = "setup_action", required = false) String setupAction
-    ) {
+            @RequestParam(name = "setup_action", required = false) String setupAction) {
         log.info("GitHub App installation callback: installationId={}, action={}", installationId, setupAction);
         return ResponseEntity.ok(Map.of(
                 "status", "success",
                 "message", "Aura GitHub App installed successfully!",
-                "installationId", installationId != null ? installationId : "registered"
-        ));
+                "installationId", installationId != null ? installationId : "registered"));
     }
 
     private void handlePullRequestEvent(JsonNode payload) {
@@ -125,8 +122,7 @@ public class GithubAppWebhookController {
                     auditAction,
                     "PullRequest",
                     String.valueOf(prNumber),
-                    metadata
-            );
+                    metadata);
         }
     }
 

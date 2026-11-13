@@ -1,0 +1,27 @@
+{
+  "name": "@aura-flags/react",
+  "version": "1.0.0",
+  "description": "Official React Hooks and Components for Aura Distributed Feature Flag Platform",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc"
+  },
+  "keywords": [
+    "react",
+    "feature-flags",
+    "aura",
+    "hooks",
+    "canary",
+    "sse"
+  ],
+  "author": "Aura Platform Core Team",
+  "license": "MIT",
+  "peerDependencies": {
+    "react": ">=18.0.0",
+    "react-dom": ">=18.0.0"
+  },
+  "dependencies": {
+    "@aura-flags/client": "^1.0.0"
+  }
+}

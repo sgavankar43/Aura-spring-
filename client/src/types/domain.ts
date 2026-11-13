@@ -30,6 +30,12 @@ export interface Project {
   features?: unknown[];
 }
 
+export interface TargetingRule {
+  attribute: string;
+  operator: string;
+  value: string;
+}
+
 export interface FeatureRow {
   id: string;
   key: string;
@@ -39,6 +45,8 @@ export interface FeatureRow {
   githubBranch?: string | null;
   githubPrNumber?: number | null;
   states: Record<string, boolean>;
+  rolloutPercentages?: Record<string, number>;
+  targetingRules?: Record<string, string>;
 }
 
 export interface AuditLogEntry {

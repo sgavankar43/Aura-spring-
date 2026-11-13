@@ -10,5 +10,11 @@
     "dev:server": "cd server && ./mvnw spring-boot:run",
     "build": "npm run build --prefix client && cd server && ./mvnw compile",
     "lint": "npm run lint --prefix client"
+  },
+  "devDependencies": {
+    "prisma": "^5.22.0"
+  },
+  "dependencies": {
+    "@prisma/client": "^5.22.0"
   }
 }

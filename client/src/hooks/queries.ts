@@ -181,6 +181,37 @@ export function useToggleFlag(projectId: string) {
   });
 }
 
+export function useUpdateFlagTargeting(projectId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      envSlug,
+      key,
+      enabled,
+      rolloutPercentage,
+      rules,
+    }: {
+      envSlug: string;
+      key: string;
+      enabled?: boolean;
+      rolloutPercentage?: number;
+      rules?: string | null;
+    }) =>
+      apiFetch(
+        `/projects/${projectId}/flags/${encodeURIComponent(envSlug)}/${encodeURIComponent(key)}/targeting`,
+        {
+          method: 'PUT',
+          body: JSON.stringify({ enabled, rolloutPercentage, rules }),
+        },
+      ),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['features', projectId] });
+      queryClient.invalidateQueries({ queryKey: ['audit-logs', projectId] });
+    },
+  });
+}
+
 export function useAuditLogs(projectId: string, page: number) {
   return useQuery({
     queryKey: ['audit-logs', projectId, page],

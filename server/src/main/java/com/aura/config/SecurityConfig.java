@@ -51,7 +51,7 @@ public class SecurityConfig {
                         .requestMatchers(
                                 "/health",
                                 "/api/auth/**",
-                                "/api/v1/evaluate",
+                                "/api/v1/**",
                                 "/api/github/webhook",
                                 "/api/github/app/**"
                         ).permitAll()

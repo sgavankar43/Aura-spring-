@@ -38,4 +38,7 @@ Thumbs.db
 *.log
 logs/
 
+# Separate testing website repository
+testing-website/
+
 

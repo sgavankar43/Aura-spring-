@@ -19,6 +19,7 @@ model User {
   updatedAt DateTime  @updatedAt @map("updated_at")
   projects  Project[]
   auditLogs AuditLog[]
+  memberships ProjectMember[]
   requestedChanges ChangeRequest[] @relation("RequestedChanges")
   reviewedChanges  ChangeRequest[] @relation("ReviewedChanges")
 
@@ -41,6 +42,7 @@ model Project {
   githubIntegration GithubIntegration?
   changeRequests    ChangeRequest[]
   webhooks          Webhook[]
+  members           ProjectMember[]
 
   @@map("projects")
 }
@@ -164,6 +166,53 @@ model Webhook {
   lastTrigger DateTime? @map("last_trigger")
   createdAt   DateTime  @default(now()) @map("created_at")
   updatedAt   DateTime  @updatedAt @map("updated_at")
+  deliveries  WebhookDelivery[]
 
   @@map("webhooks")
+}
+
+model ProjectMember {
+  id          String    @id @default(uuid()) @db.Uuid
+  projectId   String    @map("project_id") @db.Uuid
+  project     Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  userId      String?   @map("user_id") @db.Uuid
+  user        User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+  name        String
+  email       String
+  role        String    @default("EDITOR") // ADMIN, EDITOR, VIEWER
+  status      String    @default("ACTIVE") // ACTIVE, PENDING_INVITE
+  inviteToken String?   @map("invite_token")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  @@unique([projectId, email], map: "idx_project_member_email")
+  @@map("project_members")
+}
+
+model WebhookDelivery {
+  id             String    @id @default(uuid()) @db.Uuid
+  webhookId      String    @map("webhook_id") @db.Uuid
+  webhook        Webhook   @relation(fields: [webhookId], references: [id], onDelete: Cascade)
+  projectId      String    @map("project_id") @db.Uuid
+  eventType      String    @map("event_type")
+  payloadJson    String    @map("payload_json") @db.Text
+  responseStatus Int?      @map("response_status")
+  responseBody   String?   @map("response_body") @db.Text
+  durationMs     BigInt?   @map("duration_ms")
+  success        Boolean   @default(false)
+  attemptNumber  Int       @default(1) @map("attempt_number")
+  createdAt      DateTime  @default(now()) @map("created_at")
+
+  @@map("webhook_deliveries")
+}
+
+model GithubAppInstallation {
+  id              String   @id @default(uuid()) @db.Uuid
+  installationId  BigInt   @map("installation_id")
+  accountLogin    String   @map("account_login") @db.VarChar(255)
+  repoFullName    String   @unique @map("repo_full_name") @db.VarChar(255)
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  @@map("github_app_installations")
 }

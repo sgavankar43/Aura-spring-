@@ -1,3 +1,4 @@
+import { useEffect, useMemo, useState } from 'react';
 import { Link, useOutletContext } from 'react-router-dom';
 import {
   Activity,
@@ -99,7 +100,42 @@ export default function Overview() {
   }, 0);
   const disabledCount = totalFlags - enabledCount;
 
-  const recentEvents = auditData?.data?.slice(0, 5) ?? [];
+  const [liveEvents, setLiveEvents] = useState<AuditLogEntry[]>([]);
+
+  useEffect(() => {
+    if (!project?.apiKey) return;
+    const streamUrl = `/api/v1/stream?apiKey=${encodeURIComponent(project.apiKey)}&env=development`;
+    let es: EventSource | null = null;
+    try {
+      es = new EventSource(streamUrl);
+      es.addEventListener('audit_log_created', (e) => {
+        try {
+          const newEntry: AuditLogEntry = JSON.parse(e.data);
+          setLiveEvents((prev) => [newEntry, ...prev.filter((x) => x.id !== newEntry.id)].slice(0, 5));
+        } catch {
+          // ignore parsing error
+        }
+      });
+    } catch {
+      // ignore connection error
+    }
+
+    return () => {
+      es?.close();
+    };
+  }, [project?.apiKey]);
+
+  const baseEvents = auditData?.data?.slice(0, 5) ?? [];
+  const recentEvents = useMemo(() => {
+    const combined = [...liveEvents, ...baseEvents];
+    const seen = new Set<string>();
+    return combined.filter((item) => {
+      if (seen.has(item.id)) return false;
+      seen.add(item.id);
+      return true;
+    }).slice(0, 5);
+  }, [liveEvents, baseEvents]);
+
   const openPRs = pullRequests.filter((pr) => pr.state === 'open');
 
   return (
@@ -232,6 +268,10 @@ export default function Overview() {
           <div className="flex items-center gap-2">
             <Clock className="h-4 w-4 text-primary" />
             <h2 className="text-sm font-semibold text-foreground">Recent activity</h2>
+            <span className="flex items-center gap-1 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 px-2 py-0.5 text-[10px] font-mono">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              Live SSE Stream
+            </span>
           </div>
           <Link to="../audit">
             <Button variant="ghost" size="sm" className="gap-1 text-xs">

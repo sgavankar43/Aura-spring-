@@ -5,6 +5,7 @@ import com.aura.entity.Environment;
 import com.aura.entity.Feature;
 import com.aura.entity.FeatureState;
 import com.aura.entity.Project;
+import com.aura.event.AuditLogCreatedEvent;
 import com.aura.event.FlagStateChangedEvent;
 import com.aura.exception.ApiException;
 import com.aura.repository.EnvironmentRepository;
@@ -130,6 +131,32 @@ public class SseStreamService {
 
         if (!deadEmitters.isEmpty()) {
             emitters.removeAll(deadEmitters);
+        }
+    }
+
+    /**
+     * Broadcast live audit log creation to all connected project SSE channels
+     */
+    @Async
+    @EventListener
+    public void onAuditLogCreated(AuditLogCreatedEvent event) {
+        String projectPrefix = event.getProjectId().toString() + ":";
+        for (Map.Entry<String, CopyOnWriteArrayList<SseEmitter>> entry : channels.entrySet()) {
+            if (entry.getKey().startsWith(projectPrefix)) {
+                List<SseEmitter> deadEmitters = new ArrayList<>();
+                for (SseEmitter emitter : entry.getValue()) {
+                    try {
+                        emitter.send(SseEmitter.event()
+                                .name("audit_log_created")
+                                .data(event.getEntry()));
+                    } catch (Exception e) {
+                        deadEmitters.add(emitter);
+                    }
+                }
+                if (!deadEmitters.isEmpty()) {
+                    entry.getValue().removeAll(deadEmitters);
+                }
+            }
         }
     }
 

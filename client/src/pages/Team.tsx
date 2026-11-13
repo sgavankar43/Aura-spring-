@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import {
   Check,
+  Copy,
   Mail,
   MoreVertical,
   Plus,
@@ -20,7 +21,13 @@ import { Input } from '@/components/ui/Input';
 import { Label } from '@/components/ui/Label';
 import { Modal } from '@/components/ui/Modal';
 import { useAuth } from '@/contexts/AuthContext';
-import type { Project, ProjectMember } from '@/types/domain';
+import {
+  useInviteMember,
+  useProjectMembers,
+  useRemoveMember,
+  useUpdateMemberRole,
+} from '@/hooks/queries';
+import type { Project } from '@/types/domain';
 
 type MemberRole = 'ADMIN' | 'EDITOR' | 'VIEWER';
 
@@ -46,37 +53,10 @@ export default function Team() {
   const { project } = useOutletContext<{ project: Project }>();
   const { user: currentUser } = useAuth();
 
-  const storageKey = `aura_project_members_${project.id}`;
-
-  const [members, setMembers] = useState<ProjectMember[]>(() => {
-    try {
-      const saved = localStorage.getItem(storageKey);
-      if (saved) {
-        return JSON.parse(saved) as ProjectMember[];
-      }
-    } catch {
-      // ignore
-    }
-    // Default seed members
-    return [
-      {
-        id: 'owner-1',
-        projectId: project.id,
-        name: currentUser?.name || 'System Administrator',
-        email: currentUser?.email || 'admin@aura.dev',
-        role: 'ADMIN',
-        createdAt: project.createdAt,
-      },
-    ];
-  });
-
-  useEffect(() => {
-    try {
-      localStorage.setItem(storageKey, JSON.stringify(members));
-    } catch {
-      // ignore
-    }
-  }, [members, storageKey]);
+  const { data: members = [], isLoading } = useProjectMembers(project.id);
+  const inviteMutation = useInviteMember(project.id);
+  const updateRoleMutation = useUpdateMemberRole(project.id);
+  const removeMemberMutation = useRemoveMember(project.id);
 
   const [search, setSearch] = useState('');
   const [isInviteOpen, setIsInviteOpen] = useState(false);
@@ -84,7 +64,9 @@ export default function Team() {
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteRole, setInviteRole] = useState<MemberRole>('EDITOR');
   const [inviteSuccess, setInviteSuccess] = useState(false);
+  const [inviteError, setInviteError] = useState<string | null>(null);
   const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
+  const [copiedToken, setCopiedToken] = useState<string | null>(null);
 
   const filteredMembers = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -101,39 +83,55 @@ export default function Team() {
     return { total: members.length, adminCount, editorCount, viewerCount };
   }, [members]);
 
-  const handleInvite = (e: React.FormEvent) => {
+  const handleInvite = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!inviteName.trim() || !inviteEmail.trim()) return;
 
-    const newMember: ProjectMember = {
-      id: `member-${Date.now()}`,
-      projectId: project.id,
-      name: inviteName.trim(),
-      email: inviteEmail.trim().toLowerCase(),
-      role: inviteRole,
-      createdAt: new Date().toISOString(),
-    };
-
-    setMembers((prev) => [...prev, newMember]);
-    setInviteName('');
-    setInviteEmail('');
-    setInviteRole('EDITOR');
-    setInviteSuccess(true);
-    setTimeout(() => {
-      setInviteSuccess(false);
-      setIsInviteOpen(false);
-    }, 1200);
+    setInviteError(null);
+    try {
+      await inviteMutation.mutateAsync({
+        name: inviteName.trim(),
+        email: inviteEmail.trim().toLowerCase(),
+        role: inviteRole,
+      });
+      setInviteName('');
+      setInviteEmail('');
+      setInviteRole('EDITOR');
+      setInviteSuccess(true);
+      setTimeout(() => {
+        setInviteSuccess(false);
+        setIsInviteOpen(false);
+      }, 1200);
+    } catch (err: any) {
+      setInviteError(err?.message || 'Failed to invite team member');
+    }
   };
 
-  const handleUpdateRole = (id: string, newRole: MemberRole) => {
-    setMembers((prev) => prev.map((m) => (m.id === id ? { ...m, role: newRole } : m)));
-    setActiveMenuId(null);
+  const handleUpdateRole = async (memberId: string, newRole: MemberRole) => {
+    try {
+      await updateRoleMutation.mutateAsync({ memberId, role: newRole });
+      setActiveMenuId(null);
+    } catch (err: any) {
+      alert(err?.message || 'Failed to update member role');
+    }
   };
 
-  const handleRemoveMember = (id: string) => {
-    if (members.length <= 1) return;
-    setMembers((prev) => prev.filter((m) => m.id !== id));
-    setActiveMenuId(null);
+  const handleRemoveMember = async (memberId: string) => {
+    if (confirm('Are you sure you want to remove this member from the project?')) {
+      try {
+        await removeMemberMutation.mutateAsync(memberId);
+        setActiveMenuId(null);
+      } catch (err: any) {
+        alert(err?.message || 'Failed to remove member');
+      }
+    }
+  };
+
+  const handleCopyInvite = (token: string) => {
+    const inviteUrl = `${window.location.origin}/invite?token=${token}`;
+    navigator.clipboard.writeText(inviteUrl);
+    setCopiedToken(token);
+    setTimeout(() => setCopiedToken(null), 2500);
   };
 
   return (
@@ -205,7 +203,16 @@ export default function Team() {
 
       {/* Member Table */}
       <div className="rounded-xl border border-border bg-card overflow-hidden">
-        <div className="divide-y divide-border">
+        {isLoading ? (
+          <div className="py-12 text-center text-xs text-muted-foreground font-mono">
+            Loading team roster…
+          </div>
+        ) : filteredMembers.length === 0 ? (
+          <div className="py-12 text-center text-xs text-muted-foreground">
+            No team members found matching your search.
+          </div>
+        ) : (
+          <div className="divide-y divide-border">
           {filteredMembers.map((member) => {
             const roleInfo = ROLE_BADGE[member.role];
             const isOwner = member.id === 'owner-1' || member.email === currentUser?.email;
@@ -230,6 +237,11 @@ export default function Team() {
                           Owner
                         </span>
                       )}
+                      {member.status === 'PENDING_INVITE' && (
+                        <span className="rounded bg-amber-500/10 border border-amber-500/20 px-1.5 py-0.2 text-[10px] font-mono text-amber-600 dark:text-amber-400">
+                          Pending Invite
+                        </span>
+                      )}
                     </div>
                     <p className="truncate text-[11px] text-muted-foreground mt-0.5">
                       {member.email}
@@ -238,6 +250,27 @@ export default function Team() {
                 </div>
 
                 <div className="flex items-center gap-3">
+                  {member.status === 'PENDING_INVITE' && member.inviteToken && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-7 text-xs gap-1 font-mono"
+                      onClick={() => handleCopyInvite(member.inviteToken!)}
+                    >
+                      {copiedToken === member.inviteToken ? (
+                        <>
+                          <Check className="h-3 w-3 text-emerald-500" />
+                          <span>Copied</span>
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="h-3 w-3 text-muted-foreground" />
+                          <span>Copy link</span>
+                        </>
+                      )}
+                    </Button>
+                  )}
+
                   <span
                     className={`inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[11px] font-mono font-medium ${roleInfo.className}`}
                   >
@@ -295,6 +328,7 @@ export default function Team() {
             );
           })}
         </div>
+        )}
       </div>
 
       {/* Role Matrix Card */}
@@ -350,6 +384,11 @@ export default function Team() {
           </div>
         ) : (
           <form onSubmit={handleInvite} className="space-y-4">
+            {inviteError && (
+              <div className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+                {inviteError}
+              </div>
+            )}
             <div className="space-y-1.5">
               <Label htmlFor="invite-name">Full name</Label>
               <Input

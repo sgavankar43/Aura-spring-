@@ -5,10 +5,12 @@ import com.aura.dto.PaginatedAuditLogsDto;
 import com.aura.entity.AuditLog;
 import com.aura.entity.Project;
 import com.aura.entity.User;
+import com.aura.event.AuditLogCreatedEvent;
 import com.aura.repository.AuditLogRepository;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
@@ -24,10 +26,12 @@ public class AuditLogService {
 
     private final AuditLogRepository auditLogRepository;
     private final ObjectMapper objectMapper;
+    private final ApplicationEventPublisher eventPublisher;
 
-    public AuditLogService(AuditLogRepository auditLogRepository) {
+    public AuditLogService(AuditLogRepository auditLogRepository, ApplicationEventPublisher eventPublisher) {
         this.auditLogRepository = auditLogRepository;
         this.objectMapper = new ObjectMapper();
+        this.eventPublisher = eventPublisher;
     }
 
     @Transactional
@@ -49,7 +53,14 @@ public class AuditLogService {
                 .metadataJson(metadataJson)
                 .build();
 
-        auditLogRepository.save(auditLog);
+        auditLog = auditLogRepository.save(auditLog);
+
+        if (project != null) {
+            try {
+                eventPublisher.publishEvent(new AuditLogCreatedEvent(project.getId(), mapToDto(auditLog)));
+            } catch (Exception ignored) {
+            }
+        }
     }
 
     @Transactional(readOnly = true)

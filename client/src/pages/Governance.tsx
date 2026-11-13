@@ -3,6 +3,7 @@ import {
   Check,
   Copy,
   Globe,
+  History,
   Play,
   Plus,
   RefreshCw,
@@ -27,14 +28,16 @@ import {
   useCreateWebhook,
   useDeleteWebhook,
   useFeatures,
+  useRetryWebhookDelivery,
   useReviewChangeRequest,
   useTestWebhook,
   useToggleEnvironmentApproval,
+  useWebhookDeliveries,
   useWebhooks,
 } from '@/hooks/queries';
 import { apiFetch } from '@/lib/api';
 import { cn } from '@/lib/utils';
-import type { ChangeRequest, Project, WebhookTestResult } from '@/types/domain';
+import type { ChangeRequest, Project, Webhook, WebhookTestResult } from '@/types/domain';
 
 type GovernanceTab = 'approvals' | 'webhooks' | 'mcp' | 'environments';
 type CrStatusFilter = 'ALL' | 'PENDING' | 'APPROVED' | 'REJECTED';
@@ -90,6 +93,7 @@ export default function Governance() {
 
   // Webhook Test State
   const [testingWhId, setTestingWhId] = useState<string | null>(null);
+  const [selectedWhForHistory, setSelectedWhForHistory] = useState<Webhook | null>(null);
   const [testResult, setTestResult] = useState<{ id: string; result: WebhookTestResult } | null>(
     null,
   );
@@ -626,6 +630,14 @@ export default function Governance() {
                     </div>
 
                     <div className="flex items-center gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setSelectedWhForHistory(wh)}
+                      >
+                        <History className="mr-1.5 h-3.5 w-3.5" />
+                        Deliveries
+                      </Button>
                       <Button
                         size="sm"
                         variant="outline"
@@ -1186,6 +1198,116 @@ export default function Governance() {
           </div>
         </form>
       </Modal>
+
+      {/* Webhook Delivery History Modal */}
+      {selectedWhForHistory && (
+        <WebhookDeliveriesHistoryModal
+          projectId={project.id}
+          webhook={selectedWhForHistory}
+          onClose={() => setSelectedWhForHistory(null)}
+        />
+      )}
     </div>
+  );
+}
+
+function WebhookDeliveriesHistoryModal({
+  projectId,
+  webhook,
+  onClose,
+}: {
+  projectId: string;
+  webhook: Webhook;
+  onClose: () => void;
+}) {
+  const { data: deliveries = [], isLoading } = useWebhookDeliveries(projectId, webhook.id);
+  const retryMutation = useRetryWebhookDelivery(projectId, webhook.id);
+  const [retryingId, setRetryingId] = useState<string | null>(null);
+
+  return (
+    <Modal open onClose={onClose} title={`Delivery History — ${webhook.url}`}>
+      <div className="space-y-4 max-w-xl">
+        <p className="text-xs text-muted-foreground">
+          Recent HTTP delivery attempts for this webhook with status codes, latency measurements, and 1-click retry.
+        </p>
+
+        {isLoading ? (
+          <div className="py-8 text-center text-xs text-muted-foreground">Loading delivery history…</div>
+        ) : deliveries.length === 0 ? (
+          <div className="py-8 text-center text-xs text-muted-foreground border border-dashed border-border rounded-lg">
+            No delivery events recorded yet. Trigger a test ping or modify a flag to dispatch events.
+          </div>
+        ) : (
+          <div className="max-h-96 overflow-y-auto divide-y divide-border rounded-lg border border-border">
+            {deliveries.map((del) => (
+              <div key={del.id} className="p-3 text-xs space-y-2 hover:bg-muted/30 transition-colors">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span
+                      className={cn(
+                        'rounded px-1.5 py-0.5 font-mono text-[11px] font-semibold',
+                        del.success
+                          ? 'bg-emerald-500/10 text-emerald-600 border border-emerald-500/20'
+                          : 'bg-rose-500/10 text-rose-600 border border-rose-500/20',
+                      )}
+                    >
+                      HTTP {del.responseStatus || 500}
+                    </span>
+                    <span className="font-mono text-muted-foreground">{del.eventType}</span>
+                    {del.attemptNumber > 1 && (
+                      <span className="rounded bg-amber-500/10 text-amber-600 px-1.5 py-0.2 font-mono text-[10px]">
+                        Attempt #{del.attemptNumber}
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono text-muted-foreground">
+                      {del.durationMs ? `${del.durationMs}ms` : '—'}
+                    </span>
+                    <span className="text-[11px] text-muted-foreground">
+                      {new Date(del.createdAt).toLocaleTimeString()}
+                    </span>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-6 px-2 text-[11px] gap-1 text-primary hover:text-primary"
+                      disabled={retryingId === del.id}
+                      onClick={async () => {
+                        setRetryingId(del.id);
+                        try {
+                          await retryMutation.mutateAsync(del.id);
+                        } finally {
+                          setRetryingId(null);
+                        }
+                      }}
+                    >
+                      {retryingId === del.id ? (
+                        <RefreshCw className="h-3 w-3 animate-spin" />
+                      ) : (
+                        <Play className="h-3 w-3" />
+                      )}
+                      Retry
+                    </Button>
+                  </div>
+                </div>
+
+                {del.responseBody && (
+                  <div className="rounded bg-paper-2 p-2 font-mono text-[11px] text-muted-foreground overflow-x-auto max-h-20">
+                    <span className="text-foreground font-semibold">Response: </span>
+                    {del.responseBody}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+
+        <div className="flex justify-end pt-2">
+          <Button variant="ghost" onClick={onClose}>
+            Close
+          </Button>
+        </div>
+      </div>
+    </Modal>
   );
 }

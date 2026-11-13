@@ -146,9 +146,27 @@ export interface GithubPullRequest {
 export interface ProjectMember {
   id: string;
   projectId: string;
+  userId?: string | null;
   name: string;
   email: string;
   role: 'ADMIN' | 'EDITOR' | 'VIEWER';
+  status: 'ACTIVE' | 'PENDING_INVITE';
+  inviteToken?: string | null;
+  createdAt: string;
+  updatedAt?: string;
+}
+
+export interface WebhookDelivery {
+  id: string;
+  webhookId: string;
+  projectId: string;
+  eventType: string;
+  payloadJson: string;
+  responseStatus?: number | null;
+  responseBody?: string | null;
+  durationMs?: number | null;
+  success: boolean;
+  attemptNumber: number;
   createdAt: string;
 }
 

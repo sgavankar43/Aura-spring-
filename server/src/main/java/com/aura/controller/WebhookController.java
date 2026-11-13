@@ -1,6 +1,7 @@
 package com.aura.controller;
 
 import com.aura.dto.CreateWebhookRequest;
+import com.aura.dto.WebhookDeliveryDto;
 import com.aura.dto.WebhookDto;
 import com.aura.dto.WebhookTestResultDto;
 import com.aura.security.UserPrincipal;
@@ -52,5 +53,21 @@ public class WebhookController {
             @PathVariable UUID webhookId,
             @AuthenticationPrincipal UserPrincipal principal) {
         return ResponseEntity.ok(webhookService.sendTestPing(projectId, webhookId, principal));
+    }
+
+    @GetMapping("/{webhookId}/deliveries")
+    public ResponseEntity<List<WebhookDeliveryDto>> getDeliveries(
+            @PathVariable UUID projectId,
+            @PathVariable UUID webhookId) {
+        return ResponseEntity.ok(webhookService.getDeliveries(projectId, webhookId));
+    }
+
+    @PostMapping("/{webhookId}/deliveries/{deliveryId}/retry")
+    public ResponseEntity<WebhookDeliveryDto> retryDelivery(
+            @PathVariable UUID projectId,
+            @PathVariable UUID webhookId,
+            @PathVariable UUID deliveryId,
+            @AuthenticationPrincipal UserPrincipal principal) {
+        return ResponseEntity.ok(webhookService.retryDelivery(projectId, webhookId, deliveryId, principal));
     }
 }

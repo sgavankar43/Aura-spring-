@@ -1,21 +1,25 @@
 package com.aura.service;
 
 import com.aura.dto.CreateWebhookRequest;
+import com.aura.dto.WebhookDeliveryDto;
 import com.aura.dto.WebhookDto;
 import com.aura.dto.WebhookTestResultDto;
 import com.aura.entity.Project;
 import com.aura.entity.User;
 import com.aura.entity.Webhook;
+import com.aura.entity.WebhookDelivery;
 import com.aura.event.FlagStateChangedEvent;
 import com.aura.exception.ApiException;
 import com.aura.repository.ProjectRepository;
 import com.aura.repository.UserRepository;
+import com.aura.repository.WebhookDeliveryRepository;
 import com.aura.repository.WebhookRepository;
 import com.aura.security.UserPrincipal;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.event.EventListener;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
@@ -38,6 +42,7 @@ public class WebhookDispatchService {
     private static final Logger log = LoggerFactory.getLogger(WebhookDispatchService.class);
 
     private final WebhookRepository webhookRepository;
+    private final WebhookDeliveryRepository webhookDeliveryRepository;
     private final ProjectRepository projectRepository;
     private final UserRepository userRepository;
     private final AuditLogService auditLogService;
@@ -46,10 +51,12 @@ public class WebhookDispatchService {
 
     public WebhookDispatchService(
             WebhookRepository webhookRepository,
+            WebhookDeliveryRepository webhookDeliveryRepository,
             ProjectRepository projectRepository,
             UserRepository userRepository,
             AuditLogService auditLogService) {
         this.webhookRepository = webhookRepository;
+        this.webhookDeliveryRepository = webhookDeliveryRepository;
         this.projectRepository = projectRepository;
         this.userRepository = userRepository;
         this.auditLogService = auditLogService;
@@ -139,8 +146,9 @@ public class WebhookDispatchService {
         );
 
         long start = System.currentTimeMillis();
+        String jsonPayload = "";
         try {
-            String jsonPayload = objectMapper.writeValueAsString(testPayload);
+            jsonPayload = objectMapper.writeValueAsString(testPayload);
             HttpRequest.Builder reqBuilder = HttpRequest.newBuilder()
                     .uri(URI.create(webhook.getUrl()))
                     .header("Content-Type", "application/json")
@@ -159,10 +167,28 @@ public class WebhookDispatchService {
             webhook.setLastTrigger(LocalDateTime.now());
             webhookRepository.save(webhook);
 
+            boolean success = response.statusCode() >= 200 && response.statusCode() < 300;
+            String snippet = response.body() != null && response.body().length() > 500 ? response.body().substring(0, 500) + "..." : response.body();
+
+            try {
+                WebhookDelivery delivery = WebhookDelivery.builder()
+                        .webhook(webhook)
+                        .projectId(webhook.getProject().getId())
+                        .eventType("test.ping")
+                        .payloadJson(jsonPayload)
+                        .responseStatus(response.statusCode())
+                        .responseBody(snippet)
+                        .durationMs(latency)
+                        .success(success)
+                        .attemptNumber(1)
+                        .build();
+                webhookDeliveryRepository.save(delivery);
+            } catch (Exception ignored) {}
+
             return WebhookTestResultDto.builder()
-                    .success(response.statusCode() >= 200 && response.statusCode() < 300)
+                    .success(success)
                     .statusCode(response.statusCode())
-                    .responseBody(response.body() != null && response.body().length() > 500 ? response.body().substring(0, 500) + "..." : response.body())
+                    .responseBody(snippet)
                     .latencyMs(latency)
                     .message("Delivered HTTP " + response.statusCode() + " in " + latency + "ms")
                     .build();
@@ -172,6 +198,21 @@ public class WebhookDispatchService {
             webhook.setLastStatus(500);
             webhook.setLastTrigger(LocalDateTime.now());
             webhookRepository.save(webhook);
+
+            try {
+                WebhookDelivery delivery = WebhookDelivery.builder()
+                        .webhook(webhook)
+                        .projectId(webhook.getProject().getId())
+                        .eventType("test.ping")
+                        .payloadJson(jsonPayload)
+                        .responseStatus(500)
+                        .responseBody(ex.getMessage())
+                        .durationMs(latency)
+                        .success(false)
+                        .attemptNumber(1)
+                        .build();
+                webhookDeliveryRepository.save(delivery);
+            } catch (Exception ignored) {}
 
             return WebhookTestResultDto.builder()
                     .success(false)
@@ -215,6 +256,11 @@ public class WebhookDispatchService {
     }
 
     private void dispatchToEndpoint(Webhook webhook, String jsonPayload, String eventType) {
+        long start = System.currentTimeMillis();
+        int statusCode = 500;
+        String respBody = null;
+        boolean success = false;
+
         try {
             HttpRequest.Builder reqBuilder = HttpRequest.newBuilder()
                     .uri(URI.create(webhook.getUrl()))
@@ -229,12 +275,134 @@ public class WebhookDispatchService {
             }
 
             HttpResponse<String> resp = httpClient.send(reqBuilder.build(), HttpResponse.BodyHandlers.ofString());
+            statusCode = resp.statusCode();
+            respBody = resp.body() != null && resp.body().length() > 500 ? resp.body().substring(0, 500) + "..." : resp.body();
+            success = (statusCode >= 200 && statusCode < 300);
+
             webhook.setLastStatus(resp.statusCode());
             webhook.setLastTrigger(LocalDateTime.now());
             webhookRepository.save(webhook);
         } catch (Exception ex) {
+            statusCode = 500;
+            respBody = ex.getMessage();
+            success = false;
             log.warn("Failed delivering webhook to {}: {}", webhook.getUrl(), ex.getMessage());
+        } finally {
+            long latency = System.currentTimeMillis() - start;
+            try {
+                WebhookDelivery delivery = WebhookDelivery.builder()
+                        .webhook(webhook)
+                        .projectId(webhook.getProject().getId())
+                        .eventType(eventType)
+                        .payloadJson(jsonPayload)
+                        .responseStatus(statusCode)
+                        .responseBody(respBody)
+                        .durationMs(latency)
+                        .success(success)
+                        .attemptNumber(1)
+                        .build();
+                webhookDeliveryRepository.save(delivery);
+            } catch (Exception ignored) {}
         }
+    }
+
+    @Transactional(readOnly = true)
+    public List<WebhookDeliveryDto> getDeliveries(UUID projectId, UUID webhookId) {
+        Webhook webhook = webhookRepository.findById(webhookId)
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Webhook not found"));
+        if (!webhook.getProject().getId().equals(projectId)) {
+            throw new ApiException(HttpStatus.FORBIDDEN, "Webhook does not belong to this project");
+        }
+        return webhookDeliveryRepository.findByWebhookIdOrderByCreatedAtDesc(webhookId, PageRequest.of(0, 20))
+                .stream().map(this::toDeliveryDto).toList();
+    }
+
+    @Transactional
+    public WebhookDeliveryDto retryDelivery(UUID projectId, UUID webhookId, UUID deliveryId, UserPrincipal principal) {
+        Webhook webhook = webhookRepository.findById(webhookId)
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Webhook not found"));
+        if (!webhook.getProject().getId().equals(projectId)) {
+            throw new ApiException(HttpStatus.FORBIDDEN, "Webhook does not belong to this project");
+        }
+        WebhookDelivery original = webhookDeliveryRepository.findById(deliveryId)
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Delivery record not found"));
+
+        long start = System.currentTimeMillis();
+        int statusCode = 500;
+        String respBody = null;
+        boolean success = false;
+
+        try {
+            HttpRequest.Builder reqBuilder = HttpRequest.newBuilder()
+                    .uri(URI.create(webhook.getUrl()))
+                    .header("Content-Type", "application/json")
+                    .header("User-Agent", "Aura-Webhook-Dispatcher/1.0 (Retry)")
+                    .header("X-Aura-Event", original.getEventType())
+                    .header("X-Aura-Delivery-Attempt", String.valueOf(original.getAttemptNumber() + 1))
+                    .timeout(Duration.ofSeconds(6))
+                    .POST(HttpRequest.BodyPublishers.ofString(original.getPayloadJson()));
+
+            if (webhook.getSecret() != null) {
+                reqBuilder.header("X-Aura-Signature", computeHmacSha256(original.getPayloadJson(), webhook.getSecret()));
+            }
+
+            HttpResponse<String> resp = httpClient.send(reqBuilder.build(), HttpResponse.BodyHandlers.ofString());
+            statusCode = resp.statusCode();
+            respBody = resp.body() != null && resp.body().length() > 500 ? resp.body().substring(0, 500) + "..." : resp.body();
+            success = (statusCode >= 200 && statusCode < 300);
+        } catch (Exception ex) {
+            statusCode = 500;
+            respBody = ex.getMessage();
+            success = false;
+        }
+
+        long duration = System.currentTimeMillis() - start;
+
+        WebhookDelivery retryDelivery = WebhookDelivery.builder()
+                .webhook(webhook)
+                .projectId(projectId)
+                .eventType(original.getEventType())
+                .payloadJson(original.getPayloadJson())
+                .responseStatus(statusCode)
+                .responseBody(respBody)
+                .durationMs(duration)
+                .success(success)
+                .attemptNumber(original.getAttemptNumber() + 1)
+                .build();
+
+        retryDelivery = webhookDeliveryRepository.save(retryDelivery);
+
+        webhook.setLastStatus(statusCode);
+        webhook.setLastTrigger(LocalDateTime.now());
+        webhookRepository.save(webhook);
+
+        User actor = userRepository.findById(principal.getId()).orElse(null);
+        auditLogService.logAction(
+                webhook.getProject(),
+                actor,
+                "WEBHOOK_RETRY_DISPATCHED",
+                "WebhookDelivery",
+                retryDelivery.getId().toString(),
+                Map.of("webhookId", webhookId.toString(), "status", statusCode, "attempt", retryDelivery.getAttemptNumber())
+        );
+
+        return toDeliveryDto(retryDelivery);
+    }
+
+    private WebhookDeliveryDto toDeliveryDto(WebhookDelivery delivery) {
+        return WebhookDeliveryDto.builder()
+                .id(delivery.getId())
+                .webhookId(delivery.getWebhook().getId())
+                .projectId(delivery.getProjectId())
+                .eventType(delivery.getEventType())
+                .payloadJson(delivery.getPayloadJson())
+                .responseStatus(delivery.getResponseStatus())
+                .responseBody(delivery.getResponseBody())
+                .durationMs(delivery.getDurationMs())
+                .success(delivery.getSuccess())
+                .attemptNumber(delivery.getAttemptNumber())
+                .createdAt(delivery.getCreatedAt())
+                .build();
     }
 
     private String computeHmacSha256(String data, String key) {

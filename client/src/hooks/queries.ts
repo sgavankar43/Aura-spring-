@@ -15,8 +15,10 @@ import type {
   GithubTag,
   PaginatedAuditLogs,
   Project,
+  ProjectMember,
   StaleFlagReport,
   Webhook,
+  WebhookDelivery,
   WebhookTestResult,
 } from '@/types/domain';
 
@@ -615,6 +617,83 @@ export function useToggleEnvironmentApproval(projectId: string) {
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['projects', projectId] });
+      queryClient.invalidateQueries({ queryKey: ['audit-logs', projectId] });
+    },
+  });
+}
+
+export function useProjectMembers(projectId: string | undefined) {
+  return useQuery({
+    queryKey: ['project-members', projectId],
+    queryFn: () => apiFetch<ProjectMember[]>(`/projects/${projectId}/members`),
+    enabled: Boolean(projectId),
+    staleTime: 30_000,
+  });
+}
+
+export function useInviteMember(projectId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: { name: string; email: string; role: 'ADMIN' | 'EDITOR' | 'VIEWER' }) =>
+      apiFetch<ProjectMember>(`/projects/${projectId}/members`, {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['project-members', projectId] });
+      queryClient.invalidateQueries({ queryKey: ['audit-logs', projectId] });
+    },
+  });
+}
+
+export function useUpdateMemberRole(projectId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ memberId, role }: { memberId: string; role: 'ADMIN' | 'EDITOR' | 'VIEWER' }) =>
+      apiFetch<ProjectMember>(`/projects/${projectId}/members/${memberId}/role`, {
+        method: 'PATCH',
+        body: JSON.stringify({ role }),
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['project-members', projectId] });
+      queryClient.invalidateQueries({ queryKey: ['audit-logs', projectId] });
+    },
+  });
+}
+
+export function useRemoveMember(projectId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (memberId: string) =>
+      apiFetch<{ message: string }>(`/projects/${projectId}/members/${memberId}`, {
+        method: 'DELETE',
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['project-members', projectId] });
+      queryClient.invalidateQueries({ queryKey: ['audit-logs', projectId] });
+    },
+  });
+}
+
+export function useWebhookDeliveries(projectId: string | undefined, webhookId: string | undefined) {
+  return useQuery({
+    queryKey: ['webhook-deliveries', projectId, webhookId],
+    queryFn: () => apiFetch<WebhookDelivery[]>(`/projects/${projectId}/webhooks/${webhookId}/deliveries`),
+    enabled: Boolean(projectId && webhookId),
+    staleTime: 10_000,
+  });
+}
+
+export function useRetryWebhookDelivery(projectId: string, webhookId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (deliveryId: string) =>
+      apiFetch<WebhookDelivery>(`/projects/${projectId}/webhooks/${webhookId}/deliveries/${deliveryId}/retry`, {
+        method: 'POST',
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['webhook-deliveries', projectId, webhookId] });
+      queryClient.invalidateQueries({ queryKey: ['webhooks', projectId] });
       queryClient.invalidateQueries({ queryKey: ['audit-logs', projectId] });
     },
   });

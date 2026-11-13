@@ -13,4 +13,7 @@ public class GithubBranchDto {
     private String name;
     private String commitSha;
     private boolean isProtected;
+    private boolean isDefault;
+    private boolean isOccupied;
+    private String occupiedByFeatureKey;
 }

@@ -96,6 +96,9 @@ export interface GithubBranch {
   name: string;
   commitSha: string;
   isProtected: boolean;
+  isDefault?: boolean;
+  isOccupied?: boolean;
+  occupiedByFeatureKey?: string | null;
 }
 
 export interface GithubTag {

@@ -45,6 +45,11 @@ public class GithubController {
         return ResponseEntity.ok(githubService.getStatus(projectId));
     }
 
+    @GetMapping("/github/installed-repositories")
+    public ResponseEntity<List<String>> getInstalledRepositories(@PathVariable UUID projectId) {
+        return ResponseEntity.ok(githubService.getInstalledRepositories());
+    }
+
     @DeleteMapping("/github/disconnect")
     public ResponseEntity<Map<String, String>> disconnectGithub(
             @PathVariable UUID projectId,

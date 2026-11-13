@@ -9,8 +9,8 @@ import {
   Trash2,
   Users,
 } from 'lucide-react';
-import React, { useState } from 'react';
-import { useOutletContext } from 'react-router-dom';
+import React, { useMemo, useState } from 'react';
+import { Link as RouterLink, useOutletContext } from 'react-router-dom';
 import { PageLoader } from '@/components/feedback/PageLoader';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -70,6 +70,60 @@ export default function FeatureGrid() {
 
   const environments: Environment[] = project.environments ?? [];
 
+  // Filter out main/master/default branches AND occupied branches
+  const availableBranches = useMemo(() => {
+    if (!ghBranches) return [];
+    return ghBranches.filter((b) => {
+      // 1. Exclude default branch / main / master
+      if (b.isDefault || b.name === 'main' || b.name === 'master' || (ghStatus?.defaultBranch && b.name.toLowerCase() === ghStatus.defaultBranch.toLowerCase())) {
+        return false;
+      }
+      // 2. Exclude branches marked occupied from backend
+      if (b.isOccupied) return false;
+      // 3. Exclude branches occupied by existing feature flags in current project
+      if (features?.some((f) => f.githubBranch && f.githubBranch.toLowerCase() === b.name.toLowerCase())) {
+        return false;
+      }
+      return true;
+    });
+  }, [ghBranches, ghStatus?.defaultBranch, features]);
+
+  // For linking an existing feature: exclude default branch / main / master and branches occupied by OTHER flags
+  const availableBranchesForLink = useMemo(() => {
+    if (!ghBranches) return [];
+    return ghBranches.filter((b) => {
+      if (b.isDefault || b.name === 'main' || b.name === 'master' || (ghStatus?.defaultBranch && b.name.toLowerCase() === ghStatus.defaultBranch.toLowerCase())) {
+        return false;
+      }
+      // Allow the branch that is already assigned to this specific feature
+      if (linkingFeature?.githubBranch && b.name.toLowerCase() === linkingFeature.githubBranch.toLowerCase()) {
+        return true;
+      }
+      if (b.isOccupied) return false;
+      if (features?.some((f) => f.id !== linkingFeature?.id && f.githubBranch && f.githubBranch.toLowerCase() === b.name.toLowerCase())) {
+        return false;
+      }
+      return true;
+    });
+  }, [ghBranches, ghStatus?.defaultBranch, features, linkingFeature]);
+
+  const handleSelectBranch = (branchName: string) => {
+    setInitialBranch(branchName);
+    if (branchName) {
+      const cleanBranch = branchName.replace(/^(feature|feat)\//i, '');
+      if (!key) {
+        setKey(cleanBranch.toLowerCase());
+      }
+      if (!name) {
+        const titleCaseName = cleanBranch
+          .split(/[-_]+/)
+          .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+          .join(' ');
+        setName(titleCaseName);
+      }
+    }
+  };
+
   const resetForm = () => {
     setKey('');
     setName('');
@@ -83,19 +137,13 @@ export default function FeatureGrid() {
     e.preventDefault();
     setFormError('');
     try {
-      const res = await createFeature.mutateAsync({
+      await createFeature.mutateAsync({
         key: key.trim(),
         name: name.trim(),
         description: description.trim() || undefined,
         defaultEnabled,
+        githubBranch: initialBranch.trim() || undefined,
       });
-
-      if (initialBranch.trim() && res && (res as { id?: string }).id) {
-        await linkFeatureGithub.mutateAsync({
-          featureId: (res as { id: string }).id,
-          branch: initialBranch.trim(),
-        });
-      }
 
       resetForm();
       setModalOpen(false);
@@ -456,24 +504,59 @@ export default function FeatureGrid() {
             />
           </div>
 
-          {isGhConnected && ghBranches && ghBranches.length > 0 ? (
-            <div className="space-y-2">
-              <Label htmlFor="feat-branch">Link to GitHub Branch (optional)</Label>
-              <select
-                id="feat-branch"
-                value={initialBranch}
-                onChange={(e) => setInitialBranch(e.target.value)}
-                className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-xs font-mono ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              >
-                <option value="">-- No branch linked --</option>
-                {ghBranches.map((b) => (
-                  <option key={b.name} value={b.name}>
-                    {b.name}
-                  </option>
-                ))}
-              </select>
+          {isGhConnected ? (
+            <div className="space-y-2 rounded-lg border border-border/80 bg-paper-2 p-3.5">
+              <div className="flex items-center justify-between">
+                <Label htmlFor="feat-branch" className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
+                  <GitBranch className="h-3.5 w-3.5 text-primary" />
+                  Select Feature Branch (from connected GitHub App repo)
+                </Label>
+                {availableBranches.length > 0 ? (
+                  <span className="rounded bg-primary/10 px-2 py-0.5 text-[10px] font-mono font-medium text-primary">
+                    {availableBranches.length} available
+                  </span>
+                ) : null}
+              </div>
+
+              {availableBranches.length > 0 ? (
+                <>
+                  <select
+                    id="feat-branch"
+                    value={initialBranch}
+                    onChange={(e) => handleSelectBranch(e.target.value)}
+                    className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-xs font-mono ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  >
+                    <option value="">-- No branch linked --</option>
+                    {availableBranches.map((b) => (
+                      <option key={b.name} value={b.name}>
+                        {b.name}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="text-[11px] text-muted-foreground">
+                    Only unoccupied feature branches are listed. Default production branch (<code>{ghStatus?.defaultBranch || 'main'}</code>) and occupied feature branches are excluded.
+                  </p>
+                </>
+              ) : (
+                <div className="rounded border border-dashed border-border bg-background p-2.5 text-xs space-y-1">
+                  <p className="font-medium text-foreground">No available feature branches found</p>
+                  <p className="text-muted-foreground text-[11px]">
+                    All branches are occupied or only the main branch exists. Push your feature code to a separate branch on your GitHub repo (e.g. <code className="text-primary font-mono">git checkout -b feature/my-feature</code>) to select and link it here.
+                  </p>
+                </div>
+              )}
             </div>
-          ) : null}
+          ) : (
+            <div className="rounded-lg border border-border bg-paper-2 p-3 text-xs text-muted-foreground flex items-center justify-between">
+              <span className="flex items-center gap-1.5">
+                <GitBranch className="h-3.5 w-3.5" />
+                Connect your GitHub repository to link feature branches.
+              </span>
+              <RouterLink to={`/projects/${project.id}/github`} className="text-primary font-medium hover:underline text-[11px]">
+                Settings
+              </RouterLink>
+            </div>
+          )}
 
           <label className="flex cursor-pointer items-center gap-2 text-sm">
             <input
@@ -690,20 +773,26 @@ export default function FeatureGrid() {
 
           <div className="space-y-2">
             <Label htmlFor="link-branch">Branch name</Label>
-            {ghBranches && ghBranches.length > 0 ? (
-              <select
-                id="link-branch"
-                value={linkBranch}
-                onChange={(e) => setLinkBranch(e.target.value)}
-                className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-xs font-mono ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              >
-                <option value="">-- No branch --</option>
-                {ghBranches.map((b) => (
-                  <option key={b.name} value={b.name}>
-                    {b.name}
-                  </option>
-                ))}
-              </select>
+            {isGhConnected ? (
+              availableBranchesForLink.length > 0 ? (
+                <select
+                  id="link-branch"
+                  value={linkBranch}
+                  onChange={(e) => setLinkBranch(e.target.value)}
+                  className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-xs font-mono ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  <option value="">-- No branch --</option>
+                  {availableBranchesForLink.map((b) => (
+                    <option key={b.name} value={b.name}>
+                      {b.name} {linkingFeature?.githubBranch === b.name ? '(current)' : ''}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <div className="rounded border border-dashed border-border bg-paper-2 p-2.5 text-xs text-muted-foreground">
+                  No unoccupied feature branches available. Default production branch and occupied branches are excluded.
+                </div>
+              )
             ) : (
               <Input
                 id="link-branch"

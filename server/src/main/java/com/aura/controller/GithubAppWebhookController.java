@@ -1,8 +1,10 @@
 package com.aura.controller;
 
 import com.aura.entity.Feature;
+import com.aura.entity.GithubAppInstallation;
 import com.aura.entity.GithubIntegration;
 import com.aura.repository.FeatureRepository;
+import com.aura.repository.GithubAppInstallationRepository;
 import com.aura.repository.GithubIntegrationRepository;
 import com.aura.service.AuditLogService;
 import com.aura.service.GithubBotService;
@@ -11,6 +13,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
@@ -25,6 +28,7 @@ public class GithubAppWebhookController {
 
     private final GithubIntegrationRepository githubRepository;
     private final FeatureRepository featureRepository;
+    private final GithubAppInstallationRepository githubAppInstallationRepository;
     private final AuditLogService auditLogService;
     private final GithubBotService githubBotService;
     private final ObjectMapper objectMapper;
@@ -32,11 +36,13 @@ public class GithubAppWebhookController {
     public GithubAppWebhookController(
             GithubIntegrationRepository githubRepository,
             FeatureRepository featureRepository,
+            GithubAppInstallationRepository githubAppInstallationRepository,
             AuditLogService auditLogService,
             GithubBotService githubBotService,
             ObjectMapper objectMapper) {
         this.githubRepository = githubRepository;
         this.featureRepository = featureRepository;
+        this.githubAppInstallationRepository = githubAppInstallationRepository;
         this.auditLogService = auditLogService;
         this.githubBotService = githubBotService;
         this.objectMapper = objectMapper;
@@ -46,6 +52,7 @@ public class GithubAppWebhookController {
      * Webhook endpoint for GitHub App events (pull_request, installation, etc.)
      */
     @PostMapping("/webhook")
+    @Transactional
     public ResponseEntity<Map<String, Object>> handleGithubWebhook(
             @RequestHeader(value = "X-GitHub-Event", defaultValue = "ping") String event,
             @RequestBody String rawPayload) {
@@ -62,6 +69,8 @@ public class GithubAppWebhookController {
                 handlePullRequestEvent(payload);
             } else if ("installation".equalsIgnoreCase(event)) {
                 handleInstallationEvent(payload);
+            } else if ("installation_repositories".equalsIgnoreCase(event)) {
+                handleInstallationRepositoriesEvent(payload);
             }
 
         } catch (Exception e) {
@@ -164,7 +173,62 @@ public class GithubAppWebhookController {
     private void handleInstallationEvent(JsonNode payload) {
         String action = payload.path("action").asText("");
         long installationId = payload.path("installation").path("id").asLong();
-        String sender = payload.path("sender").path("login").asText();
-        log.info("GitHub App installation {}: id={}, sender={}", action, installationId, sender);
+        String accountLogin = payload.path("installation").path("account").path("login").asText();
+        log.info("GitHub App installation {}: id={}, account={}", action, installationId, accountLogin);
+
+        if ("created".equalsIgnoreCase(action) || "added".equalsIgnoreCase(action)) {
+            JsonNode repos = payload.path("repositories");
+            if (repos.isArray()) {
+                for (JsonNode r : repos) {
+                    String repoFullName = r.path("full_name").asText();
+                    if (!repoFullName.isBlank() && !githubAppInstallationRepository.existsByRepoFullNameIgnoreCase(repoFullName)) {
+                        githubAppInstallationRepository.save(GithubAppInstallation.builder()
+                                .installationId(installationId)
+                                .accountLogin(accountLogin)
+                                .repoFullName(repoFullName)
+                                .build());
+                        log.info("Registered authorized repo via GitHub App: {}", repoFullName);
+                    }
+                }
+            }
+        } else if ("deleted".equalsIgnoreCase(action)) {
+            githubAppInstallationRepository.deleteByInstallationId(installationId);
+            log.info("Removed authorized repos for installation ID {}", installationId);
+        }
+    }
+
+    private void handleInstallationRepositoriesEvent(JsonNode payload) {
+        String action = payload.path("action").asText("");
+        long installationId = payload.path("installation").path("id").asLong();
+        String accountLogin = payload.path("installation").path("account").path("login").asText();
+        log.info("GitHub App installation_repositories {}: id={}, account={}", action, installationId, accountLogin);
+
+        if ("added".equalsIgnoreCase(action)) {
+            JsonNode added = payload.path("repositories_added");
+            if (added.isArray()) {
+                for (JsonNode r : added) {
+                    String repoFullName = r.path("full_name").asText();
+                    if (!repoFullName.isBlank() && !githubAppInstallationRepository.existsByRepoFullNameIgnoreCase(repoFullName)) {
+                        githubAppInstallationRepository.save(GithubAppInstallation.builder()
+                                .installationId(installationId)
+                                .accountLogin(accountLogin)
+                                .repoFullName(repoFullName)
+                                .build());
+                        log.info("Added authorized repo: {}", repoFullName);
+                    }
+                }
+            }
+        } else if ("removed".equalsIgnoreCase(action)) {
+            JsonNode removed = payload.path("repositories_removed");
+            if (removed.isArray()) {
+                for (JsonNode r : removed) {
+                    String repoFullName = r.path("full_name").asText();
+                    if (!repoFullName.isBlank()) {
+                        githubAppInstallationRepository.deleteByRepoFullNameIgnoreCase(repoFullName);
+                        log.info("Removed authorized repo: {}", repoFullName);
+                    }
+                }
+            }
+        }
     }
 }

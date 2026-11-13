@@ -41,6 +41,7 @@ import {
   useGithubStatus,
   useGithubTags,
   useGithubTree,
+  useInstalledGithubRepos,
   useScanPr,
   useSimulateMergeGraduation,
 } from '@/hooks/queries';
@@ -52,6 +53,7 @@ type ActiveTab = 'commits' | 'branches' | 'tags' | 'prs' | 'code';
 export default function ProjectGithub() {
   const { project } = useOutletContext<{ project: Project }>();
   const { data: status, isLoading, refetch: refetchStatus } = useGithubStatus(project.id);
+  const { data: installedRepos } = useInstalledGithubRepos(project.id);
   const connectMutation = useConnectGithub(project.id);
   const disconnectMutation = useDisconnectGithub(project.id);
 
@@ -201,10 +203,66 @@ export default function ProjectGithub() {
 
           <div className="border-t border-border/60 pt-3">
             <p className="text-[11px] text-muted-foreground">
-              After installing the app, enter your repository name below to link it to this project.
+              After installing the app, authorized repositories will appear below for 1-click connection.
             </p>
           </div>
         </div>
+
+        {/* Authorized GitHub App Repositories */}
+        {installedRepos && installedRepos.length > 0 ? (
+          <Card className="max-w-2xl border-primary/30">
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="h-5 w-5 text-primary" />
+                  <CardTitle className="text-base">Authorized GitHub App Repositories</CardTitle>
+                </div>
+                <span className="rounded bg-primary/10 border border-primary/20 px-2 py-0.5 text-xs font-mono text-primary font-medium">
+                  {installedRepos.length} authorized
+                </span>
+              </div>
+              <CardDescription>
+                These repositories have been authorized via your Aura GitHub App connection. Select one to link directly to this project.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                {installedRepos.map((repoFullName) => (
+                  <div
+                    key={repoFullName}
+                    className="flex items-center justify-between p-3 rounded-lg border border-border bg-paper-2 hover:border-primary/40 transition-colors"
+                  >
+                    <div className="space-y-0.5">
+                      <div className="flex items-center gap-2">
+                        <FolderGit2 className="h-4 w-4 text-primary" />
+                        <span className="font-mono text-sm font-semibold text-foreground">{repoFullName}</span>
+                      </div>
+                      <p className="text-[11px] text-muted-foreground">
+                        Verified Aura GitHub App access • Zero manual token required
+                      </p>
+                    </div>
+                    <Button
+                      size="sm"
+                      disabled={connectMutation.isPending}
+                      onClick={async () => {
+                        setConnectError('');
+                        try {
+                          await connectMutation.mutateAsync({
+                            repository: repoFullName,
+                          });
+                        } catch (err) {
+                          setConnectError(err instanceof Error ? err.message : 'Failed to connect repository');
+                        }
+                      }}
+                    >
+                      {connectMutation.isPending && repoInput === repoFullName ? 'Connecting…' : 'Connect'}
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        ) : null}
 
         {/* Repository Link Form */}
         <Card className="max-w-2xl">
@@ -214,7 +272,7 @@ export default function ProjectGithub() {
               <CardTitle>Link Repository to Project</CardTitle>
             </div>
             <CardDescription>
-              Enter the repository slug (e.g. <code>owner/repo</code>, <code>sgavankar43/Aura-spring-</code>, or your private repo).
+              Enter your repository slug (e.g. <code>owner/repo</code>). Only repositories authorized via the Aura GitHub App can be linked to prevent unauthorized public repository access.
             </CardDescription>
           </CardHeader>
           <CardContent>

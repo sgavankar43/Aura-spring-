@@ -19,6 +19,7 @@ import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 
 @Service
@@ -33,6 +34,7 @@ public class FeatureService {
     private final TargetingEngine targetingEngine;
     private final ApplicationEventPublisher eventPublisher;
     private final ChangeRequestRepository changeRequestRepository;
+    private final GithubIntegrationRepository githubIntegrationRepository;
 
     public FeatureService(
             ProjectRepository projectRepository,
@@ -43,7 +45,8 @@ public class FeatureService {
             AuditLogService auditLogService,
             TargetingEngine targetingEngine,
             ApplicationEventPublisher eventPublisher,
-            ChangeRequestRepository changeRequestRepository) {
+            ChangeRequestRepository changeRequestRepository,
+            GithubIntegrationRepository githubIntegrationRepository) {
         this.projectRepository = projectRepository;
         this.environmentRepository = environmentRepository;
         this.featureRepository = featureRepository;
@@ -53,6 +56,7 @@ public class FeatureService {
         this.targetingEngine = targetingEngine;
         this.eventPublisher = eventPublisher;
         this.changeRequestRepository = changeRequestRepository;
+        this.githubIntegrationRepository = githubIntegrationRepository;
     }
 
     @Transactional(readOnly = true)
@@ -113,12 +117,22 @@ public class FeatureService {
 
         boolean defaultEnabled = Boolean.TRUE.equals(request.getDefaultEnabled());
 
+        String requestedBranch = (request.getGithubBranch() != null && !request.getGithubBranch().isBlank())
+                ? request.getGithubBranch().trim()
+                : null;
+
+        if (requestedBranch != null) {
+            validateBranchForFeature(projectId, requestedBranch, null);
+        }
+
         Feature feature = Feature.builder()
                 .project(project)
                 .key(request.getKey())
                 .name(request.getName())
                 .description(request.getDescription())
                 .defaultEnabled(defaultEnabled)
+                .githubBranch(requestedBranch)
+                .githubPrNumber(request.getGithubPrNumber())
                 .build();
 
         feature = featureRepository.save(feature);
@@ -212,7 +226,12 @@ public class FeatureService {
             throw new ApiException(HttpStatus.BAD_REQUEST, "Feature does not belong to this project");
         }
 
-        feature.setGithubBranch(branch != null && !branch.isBlank() ? branch.trim() : null);
+        String cleanBranch = (branch != null && !branch.isBlank()) ? branch.trim() : null;
+        if (cleanBranch != null) {
+            validateBranchForFeature(projectId, cleanBranch, feature.getId());
+        }
+
+        feature.setGithubBranch(cleanBranch);
         feature.setGithubPrNumber(prNumber);
         feature = featureRepository.save(feature);
 
@@ -401,5 +420,29 @@ public class FeatureService {
                 .flags(flags)
                 .evaluatedAt(LocalDateTime.now())
                 .build();
+    }
+
+    public void validateBranchForFeature(UUID projectId, String branch, UUID currentFeatureId) {
+        if (branch == null || branch.isBlank()) {
+            return;
+        }
+        String cleanBranch = branch.trim();
+
+        // 1. Must NOT be the default / production branch (main, master, or configured default branch)
+        Optional<GithubIntegration> integrationOpt = githubIntegrationRepository.findByProjectId(projectId);
+        String defaultBranch = integrationOpt.map(GithubIntegration::getDefaultBranch).orElse("main");
+        if (cleanBranch.equalsIgnoreCase(defaultBranch) || cleanBranch.equalsIgnoreCase("main") || cleanBranch.equalsIgnoreCase("master")) {
+            throw new ApiException(HttpStatus.BAD_REQUEST,
+                    "Cannot link feature flag to default/production branch '" + cleanBranch + "'. Features must be linked to a separate feature branch.");
+        }
+
+        // 2. Must NOT be already occupied by another feature flag in this project
+        List<Feature> existingOccupied = featureRepository.findByProjectIdAndGithubBranch(projectId, cleanBranch);
+        for (Feature f : existingOccupied) {
+            if (currentFeatureId == null || !f.getId().equals(currentFeatureId)) {
+                throw new ApiException(HttpStatus.BAD_REQUEST,
+                        "Branch '" + cleanBranch + "' is already occupied by feature flag '" + f.getKey() + "'. Each feature must have its own separate branch.");
+            }
+        }
     }
 }

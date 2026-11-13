@@ -111,6 +111,8 @@ export function useCreateFeature(projectId: string) {
       name: string;
       description?: string;
       defaultEnabled?: boolean;
+      githubBranch?: string;
+      githubPrNumber?: number;
     }) =>
       apiFetch(`/projects/${projectId}/features`, {
         method: 'POST',
@@ -120,6 +122,7 @@ export function useCreateFeature(projectId: string) {
       queryClient.invalidateQueries({ queryKey: ['features', projectId] });
       queryClient.invalidateQueries({ queryKey: ['audit-logs', projectId] });
       queryClient.invalidateQueries({ queryKey: ['project', projectId] });
+      queryClient.invalidateQueries({ queryKey: ['github-branches', projectId] });
     },
   });
 }
@@ -136,6 +139,7 @@ export function useDeleteFeature(projectId: string) {
       queryClient.invalidateQueries({ queryKey: ['stale-flags', projectId] });
       queryClient.invalidateQueries({ queryKey: ['audit-logs', projectId] });
       queryClient.invalidateQueries({ queryKey: ['project', projectId] });
+      queryClient.invalidateQueries({ queryKey: ['github-branches', projectId] });
     },
   });
 }
@@ -231,6 +235,7 @@ export function useUpdateFlagTargeting(projectId: string) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['features', projectId] });
       queryClient.invalidateQueries({ queryKey: ['audit-logs', projectId] });
+      queryClient.invalidateQueries({ queryKey: ['github-branches', projectId] });
     },
   });
 }
@@ -314,6 +319,15 @@ export function useGithubBranches(projectId: string, enabled = true) {
   });
 }
 
+export function useInstalledGithubRepos(projectId: string, enabled = true) {
+  return useQuery({
+    queryKey: ['github-installed-repos', projectId],
+    queryFn: () => apiFetch<string[]>(`/projects/${projectId}/github/installed-repositories`),
+    enabled: Boolean(projectId) && enabled,
+    staleTime: 30_000,
+  });
+}
+
 export function useGithubTags(projectId: string, enabled = true) {
   return useQuery({
     queryKey: ['github-tags', projectId],
@@ -378,6 +392,7 @@ export function useLinkFeatureGithub(projectId: string) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['features', projectId] });
       queryClient.invalidateQueries({ queryKey: ['audit-logs', projectId] });
+      queryClient.invalidateQueries({ queryKey: ['github-branches', projectId] });
     },
   });
 }

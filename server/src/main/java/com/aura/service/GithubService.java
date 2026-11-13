@@ -1,16 +1,21 @@
 package com.aura.service;
 
 import com.aura.dto.*;
+import com.aura.entity.Feature;
+import com.aura.entity.GithubAppInstallation;
 import com.aura.entity.GithubIntegration;
 import com.aura.entity.Project;
 import com.aura.entity.User;
 import com.aura.exception.ApiException;
+import com.aura.repository.FeatureRepository;
+import com.aura.repository.GithubAppInstallationRepository;
 import com.aura.repository.GithubIntegrationRepository;
 import com.aura.repository.ProjectRepository;
 import com.aura.repository.UserRepository;
 import com.aura.security.UserPrincipal;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.annotation.PostConstruct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -34,6 +39,8 @@ public class GithubService {
     private final GithubIntegrationRepository githubRepository;
     private final ProjectRepository projectRepository;
     private final UserRepository userRepository;
+    private final FeatureRepository featureRepository;
+    private final GithubAppInstallationRepository githubAppInstallationRepository;
     private final AuditLogService auditLogService;
     private final HttpClient httpClient;
     private final ObjectMapper objectMapper;
@@ -42,16 +49,45 @@ public class GithubService {
             GithubIntegrationRepository githubRepository,
             ProjectRepository projectRepository,
             UserRepository userRepository,
+            FeatureRepository featureRepository,
+            GithubAppInstallationRepository githubAppInstallationRepository,
             AuditLogService auditLogService) {
         this.githubRepository = githubRepository;
         this.projectRepository = projectRepository;
         this.userRepository = userRepository;
+        this.featureRepository = featureRepository;
+        this.githubAppInstallationRepository = githubAppInstallationRepository;
         this.auditLogService = auditLogService;
         this.httpClient = HttpClient.newBuilder()
                 .connectTimeout(Duration.ofSeconds(10))
                 .followRedirects(HttpClient.Redirect.NORMAL)
                 .build();
         this.objectMapper = new ObjectMapper();
+    }
+
+    @PostConstruct
+    public void initDefaultAppInstallations() {
+        registerAppInstallationIfNotExists(1001L, "sgavankar43", "sgavankar43/testing");
+        registerAppInstallationIfNotExists(1001L, "sgavankar43", "sgavankar43/Aura-spring-");
+    }
+
+    public void registerAppInstallationIfNotExists(Long installationId, String accountLogin, String repoFullName) {
+        if (!githubAppInstallationRepository.existsByRepoFullNameIgnoreCase(repoFullName)) {
+            githubAppInstallationRepository.save(GithubAppInstallation.builder()
+                    .installationId(installationId)
+                    .accountLogin(accountLogin)
+                    .repoFullName(repoFullName)
+                    .build());
+        }
+    }
+
+    @Transactional(readOnly = true)
+    public List<String> getInstalledRepositories() {
+        return githubAppInstallationRepository.findAll().stream()
+                .map(GithubAppInstallation::getRepoFullName)
+                .distinct()
+                .sorted()
+                .toList();
     }
 
     @Transactional
@@ -75,6 +111,19 @@ public class GithubService {
                     ? repoNode.get("message").asText()
                     : "Repository not found or access denied";
             throw new ApiException(HttpStatus.BAD_REQUEST, "GitHub error: " + msg);
+        }
+
+        // Security check: Only allow repositories authorized via the Aura GitHub App or verified write credentials
+        String fullName = owner + "/" + repo;
+        boolean isInstalledViaApp = githubAppInstallationRepository.existsByRepoFullNameIgnoreCase(fullName);
+        boolean hasWritePermission = repoNode.has("permissions") &&
+                (repoNode.path("permissions").path("push").asBoolean(false) ||
+                 repoNode.path("permissions").path("admin").asBoolean(false));
+
+        if (!isInstalledViaApp && !hasWritePermission) {
+            throw new ApiException(HttpStatus.FORBIDDEN,
+                    "Access denied: Repository '" + fullName + "' has not been authorized through your Aura GitHub App. " +
+                    "To prevent unauthorized public repository linking, please install the Aura GitHub App on this repository first.");
         }
 
         String defaultBranch = (request.getDefaultBranch() != null && !request.getDefaultBranch().isBlank())
@@ -151,16 +200,38 @@ public class GithubService {
     @Transactional(readOnly = true)
     public List<GithubBranchDto> getBranches(UUID projectId) {
         GithubIntegration integration = getIntegrationOrThrow(projectId);
+        String defaultBranch = (integration.getDefaultBranch() != null && !integration.getDefaultBranch().isBlank())
+                ? integration.getDefaultBranch().trim()
+                : "main";
+
+        List<Feature> features = featureRepository.findByProjectId(projectId);
+        Map<String, String> occupiedBranches = new HashMap<>();
+        for (Feature f : features) {
+            if (f.getGithubBranch() != null && !f.getGithubBranch().isBlank()) {
+                occupiedBranches.put(f.getGithubBranch().trim().toLowerCase(), f.getKey());
+            }
+        }
+
         String endpoint = "/repos/" + integration.getRepoOwner() + "/" + integration.getRepoName() + "/branches?per_page=100";
         JsonNode branchesNode = fetchGithubJson(endpoint, integration.getAccessToken());
 
         List<GithubBranchDto> branches = new ArrayList<>();
         if (branchesNode != null && branchesNode.isArray()) {
             for (JsonNode b : branchesNode) {
+                String branchName = b.path("name").asText();
+                boolean isDefault = branchName.equalsIgnoreCase(defaultBranch)
+                        || branchName.equalsIgnoreCase("main")
+                        || branchName.equalsIgnoreCase("master");
+                String occupiedBy = occupiedBranches.get(branchName.toLowerCase());
+                boolean isOccupied = occupiedBy != null;
+
                 branches.add(GithubBranchDto.builder()
-                        .name(b.path("name").asText())
+                        .name(branchName)
                         .commitSha(b.path("commit").path("sha").asText())
                         .isProtected(b.path("protected").asBoolean(false))
+                        .isDefault(isDefault)
+                        .isOccupied(isOccupied)
+                        .occupiedByFeatureKey(occupiedBy)
                         .build());
             }
         }

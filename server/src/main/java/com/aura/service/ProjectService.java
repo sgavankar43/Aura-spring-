@@ -162,6 +162,7 @@ public class ProjectService {
                         .slug(env.getSlug())
                         .color(env.getColor())
                         .sortOrder(env.getSortOrder())
+                        .requireApproval(Boolean.TRUE.equals(env.getRequireApproval()))
                         .createdAt(env.getCreatedAt())
                         .updatedAt(env.getUpdatedAt())
                         .projectId(project.getId())

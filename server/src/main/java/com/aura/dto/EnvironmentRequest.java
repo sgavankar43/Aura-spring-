@@ -12,4 +12,6 @@ public class EnvironmentRequest {
     private String slug;
 
     private String color;
+
+    private Boolean requireApproval;
 }

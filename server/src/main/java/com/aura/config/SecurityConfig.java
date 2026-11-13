@@ -52,6 +52,7 @@ public class SecurityConfig {
                                 "/health",
                                 "/api/auth/**",
                                 "/api/v1/**",
+                                "/api/mcp/**",
                                 "/api/github/webhook",
                                 "/api/github/app/**"
                         ).permitAll()

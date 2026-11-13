@@ -13,6 +13,7 @@ export interface Environment {
   slug: string;
   color: string | null;
   sortOrder: number;
+  requireApproval?: boolean;
   createdAt: string;
   updatedAt: string;
   projectId: string;
@@ -219,4 +220,47 @@ export interface FlagCleanupPrResponse {
   prUrl?: string | null;
   status: string;
   affectedFiles: string[];
+}
+
+export interface ChangeRequest {
+  id: string;
+  projectId: string;
+  featureId: string;
+  featureKey: string;
+  featureName: string;
+  environmentId: string;
+  environmentSlug: string;
+  environmentName: string;
+  requesterId: string;
+  requesterName: string;
+  requesterEmail: string;
+  reviewerId?: string | null;
+  reviewerName?: string | null;
+  targetState: boolean;
+  targetRollout: number;
+  targetRules?: string | null;
+  reason?: string | null;
+  status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'APPLIED';
+  createdAt: string;
+  reviewedAt?: string | null;
+}
+
+export interface Webhook {
+  id: string;
+  projectId: string;
+  url: string;
+  description?: string | null;
+  events: string;
+  enabled: boolean;
+  lastStatus?: number | null;
+  lastTrigger?: string | null;
+  createdAt: string;
+}
+
+export interface WebhookTestResult {
+  success: boolean;
+  statusCode: number;
+  responseBody?: string | null;
+  latencyMs: number;
+  message: string;
 }

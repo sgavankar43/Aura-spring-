@@ -223,7 +223,7 @@ public class FeatureService {
         Project project = projectRepository.findByIdAndArchivedAtIsNull(projectId)
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Project not found"));
 
-        User user = userRepository.findById(principal.getId()).orElse(null);
+        User user = (principal != null) ? userRepository.findById(principal.getId()).orElse(null) : null;
 
         Feature feature = featureRepository.findByProjectIdAndKey(projectId, key)
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Feature with key '" + key + "' not found"));
@@ -267,7 +267,7 @@ public class FeatureService {
         Project project = projectRepository.findByIdAndArchivedAtIsNull(projectId)
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Project not found"));
 
-        User user = userRepository.findById(principal.getId()).orElse(null);
+        User user = (principal != null) ? userRepository.findById(principal.getId()).orElse(null) : null;
 
         Feature feature = featureRepository.findByProjectIdAndKey(projectId, key)
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Feature with key '" + key + "' not found"));

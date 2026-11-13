@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiFetch, publicFetch } from '@/lib/api';
 import type {
+  ChangeRequest,
   Environment,
   FeatureRow,
   FlagCleanupPrResponse,
@@ -15,6 +16,8 @@ import type {
   PaginatedAuditLogs,
   Project,
   StaleFlagReport,
+  Webhook,
+  WebhookTestResult,
 } from '@/types/domain';
 
 export function useProjects() {
@@ -457,6 +460,130 @@ export function useSimulateMergeGraduation(projectId: string) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['features', projectId] });
       queryClient.invalidateQueries({ queryKey: ['stale-flags', projectId] });
+      queryClient.invalidateQueries({ queryKey: ['audit-logs', projectId] });
+    },
+  });
+}
+
+export function useChangeRequests(projectId: string | undefined, status?: string) {
+  return useQuery({
+    queryKey: ['change-requests', projectId, status],
+    queryFn: () => {
+      const q = status ? `?status=${status}` : '';
+      return apiFetch<ChangeRequest[]>(`/projects/${projectId}/change-requests${q}`);
+    },
+    enabled: Boolean(projectId),
+    staleTime: 15_000,
+  });
+}
+
+export function useCreateChangeRequest(projectId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: {
+      featureKey: string;
+      environmentSlug: string;
+      targetState: boolean;
+      targetRollout?: number;
+      targetRules?: string;
+      reason?: string;
+    }) =>
+      apiFetch<ChangeRequest>(`/projects/${projectId}/change-requests`, {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['change-requests', projectId] });
+      queryClient.invalidateQueries({ queryKey: ['audit-logs', projectId] });
+    },
+  });
+}
+
+export function useReviewChangeRequest(projectId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      changeRequestId,
+      decision,
+      comment,
+    }: {
+      changeRequestId: string;
+      decision: 'APPROVE' | 'REJECT';
+      comment?: string;
+    }) =>
+      apiFetch<ChangeRequest>(`/projects/${projectId}/change-requests/${changeRequestId}/review`, {
+        method: 'POST',
+        body: JSON.stringify({ decision, comment }),
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['change-requests', projectId] });
+      queryClient.invalidateQueries({ queryKey: ['features', projectId] });
+      queryClient.invalidateQueries({ queryKey: ['audit-logs', projectId] });
+    },
+  });
+}
+
+export function useWebhooks(projectId: string | undefined) {
+  return useQuery({
+    queryKey: ['webhooks', projectId],
+    queryFn: () => apiFetch<Webhook[]>(`/projects/${projectId}/webhooks`),
+    enabled: Boolean(projectId),
+    staleTime: 30_000,
+  });
+}
+
+export function useCreateWebhook(projectId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: { url: string; secret?: string; description?: string; events?: string; enabled?: boolean }) =>
+      apiFetch<Webhook>(`/projects/${projectId}/webhooks`, {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['webhooks', projectId] });
+      queryClient.invalidateQueries({ queryKey: ['audit-logs', projectId] });
+    },
+  });
+}
+
+export function useDeleteWebhook(projectId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (webhookId: string) =>
+      apiFetch<{ message: string }>(`/projects/${projectId}/webhooks/${webhookId}`, {
+        method: 'DELETE',
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['webhooks', projectId] });
+      queryClient.invalidateQueries({ queryKey: ['audit-logs', projectId] });
+    },
+  });
+}
+
+export function useTestWebhook(projectId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (webhookId: string) =>
+      apiFetch<WebhookTestResult>(`/projects/${projectId}/webhooks/${webhookId}/test`, {
+        method: 'POST',
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['webhooks', projectId] });
+    },
+  });
+}
+
+export function useToggleEnvironmentApproval(projectId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ environmentId, requireApproval }: { environmentId: string; requireApproval: boolean }) =>
+      apiFetch<{ environment: Environment }>(`/projects/${projectId}/environments/${environmentId}/approval`, {
+        method: 'PATCH',
+        body: JSON.stringify({ requireApproval }),
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['projects', projectId] });
       queryClient.invalidateQueries({ queryKey: ['audit-logs', projectId] });
     },
   });

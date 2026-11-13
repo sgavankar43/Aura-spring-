@@ -31,4 +31,17 @@ public class EnvironmentController {
                 .environment(environmentService.createEnvironment(projectId, request, principal))
                 .build());
     }
+
+    @PatchMapping("/{environmentId}/approval")
+    public ResponseEntity<EnvironmentResponse> updateApprovalRequirement(
+            @PathVariable UUID projectId,
+            @PathVariable UUID environmentId,
+            @RequestBody java.util.Map<String, Boolean> body,
+            @AuthenticationPrincipal UserPrincipal principal
+    ) {
+        boolean requireApproval = Boolean.TRUE.equals(body.get("requireApproval"));
+        return ResponseEntity.ok(EnvironmentResponse.builder()
+                .environment(environmentService.updateApprovalRequirement(projectId, environmentId, requireApproval, principal))
+                .build());
+    }
 }

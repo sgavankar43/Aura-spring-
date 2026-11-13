@@ -1,0 +1,25 @@
+{
+  "name": "@aura-flags/mcp",
+  "version": "1.0.0",
+  "description": "Aura Feature Flag Model Context Protocol (MCP) Server for Cursor, Antigravity & AI Agents",
+  "main": "dist/index.js",
+  "bin": {
+    "aura-mcp": "dist/index.js"
+  },
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "feature-flags",
+    "remote-config",
+    "aura",
+    "cursor",
+    "antigravity"
+  ],
+  "author": "Aura Platform Team",
+  "license": "MIT"
+}

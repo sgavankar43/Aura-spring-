@@ -80,6 +80,9 @@ export default function ProjectDetail() {
         <NavLink to="templates" className={tabClass} data-testid="tab-templates">
           Templates
         </NavLink>
+        <NavLink to="governance" className={tabClass} data-testid="tab-governance">
+          Governance
+        </NavLink>
         <NavLink to="team" className={tabClass} data-testid="tab-team">
           Team
         </NavLink>

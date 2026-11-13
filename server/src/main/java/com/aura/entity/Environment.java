@@ -37,6 +37,9 @@ public class Environment {
     @Column(name = "sort_order", nullable = false)
     private Integer sortOrder;
 
+    @Column(name = "require_approval", nullable = false)
+    private Boolean requireApproval = false;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
@@ -49,13 +52,14 @@ public class Environment {
     }
 
     @Builder
-    public Environment(UUID id, Project project, String name, String slug, String color, Integer sortOrder, LocalDateTime createdAt, LocalDateTime updatedAt) {
+    public Environment(UUID id, Project project, String name, String slug, String color, Integer sortOrder, Boolean requireApproval, LocalDateTime createdAt, LocalDateTime updatedAt) {
         this.id = id;
         this.project = project;
         this.name = name;
         this.slug = slug;
         this.color = color;
         this.sortOrder = sortOrder;
+        this.requireApproval = requireApproval != null ? requireApproval : false;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
     }

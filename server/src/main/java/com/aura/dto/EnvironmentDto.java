@@ -13,6 +13,7 @@ public class EnvironmentDto {
     private String slug;
     private String color;
     private Integer sortOrder;
+    private Boolean requireApproval;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private UUID projectId;
@@ -21,12 +22,13 @@ public class EnvironmentDto {
     }
 
     @Builder
-    public EnvironmentDto(UUID id, String name, String slug, String color, Integer sortOrder, LocalDateTime createdAt, LocalDateTime updatedAt, UUID projectId) {
+    public EnvironmentDto(UUID id, String name, String slug, String color, Integer sortOrder, Boolean requireApproval, LocalDateTime createdAt, LocalDateTime updatedAt, UUID projectId) {
         this.id = id;
         this.name = name;
         this.slug = slug;
         this.color = color;
         this.sortOrder = sortOrder;
+        this.requireApproval = requireApproval;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
         this.projectId = projectId;

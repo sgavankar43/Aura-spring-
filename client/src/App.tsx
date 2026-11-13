@@ -23,6 +23,7 @@ import Register from '@/pages/Register';
 import StaleFlags from '@/pages/StaleFlags';
 import Team from '@/pages/Team';
 import Templates from '@/pages/Templates';
+import Governance from '@/pages/Governance';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -105,6 +106,7 @@ export default function App() {
                     <Route path="api-keys" element={<ApiKeys />} />
                     <Route path="team" element={<Team />} />
                     <Route path="templates" element={<Templates />} />
+                    <Route path="governance" element={<Governance />} />
                   </Route>
                 </Route>
 

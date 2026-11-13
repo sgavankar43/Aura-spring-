@@ -67,6 +67,7 @@ public class EnvironmentService {
                 .slug(request.getSlug())
                 .color(request.getColor() != null ? request.getColor() : "#6B7280")
                 .sortOrder(nextSortOrder)
+                .requireApproval(Boolean.TRUE.equals(request.getRequireApproval()) || "production".equalsIgnoreCase(request.getSlug()))
                 .build();
 
         env = environmentRepository.save(env);
@@ -84,15 +85,32 @@ public class EnvironmentService {
 
         auditLogService.logAction(project, user, "ENVIRONMENT_CREATED", "Environment", env.getId().toString(), Map.of("name", env.getName(), "slug", env.getSlug()));
 
+        return mapToDto(env);
+    }
+
+    @Transactional
+    public EnvironmentDto updateApprovalRequirement(UUID projectId, UUID environmentId, boolean requireApproval, UserPrincipal principal) {
+        Environment env = environmentRepository.findById(environmentId)
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Environment not found"));
+        if (!env.getProject().getId().equals(projectId)) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Environment does not belong to project");
+        }
+        env.setRequireApproval(requireApproval);
+        env = environmentRepository.save(env);
+        return mapToDto(env);
+    }
+
+    public static EnvironmentDto mapToDto(Environment env) {
         return EnvironmentDto.builder()
                 .id(env.getId())
                 .name(env.getName())
                 .slug(env.getSlug())
                 .color(env.getColor())
                 .sortOrder(env.getSortOrder())
+                .requireApproval(Boolean.TRUE.equals(env.getRequireApproval()))
                 .createdAt(env.getCreatedAt())
                 .updatedAt(env.getUpdatedAt())
-                .projectId(projectId)
+                .projectId(env.getProject().getId())
                 .build();
     }
 }

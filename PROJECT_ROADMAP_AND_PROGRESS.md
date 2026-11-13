@@ -1,8 +1,8 @@
 # Aura Platform — Development Progress & Future Roadmap
 
-> **Document Version:** 1.1.0  
+> **Document Version:** 1.2.0  
 > **Last Updated:** November 13, 2026  
-> **Status:** Phase 1–7 Complete · Production Live · Phase 8 Planning  
+> **Status:** Phase 1–9 Complete · Production Live & Verified · Phase 10 Horizon  
 > **Live Production URLs:**  
 > - **Backend API:** [https://aura-spring.onrender.com](https://aura-spring.onrender.com)  
 > - **Database:** Neon Serverless PostgreSQL (`ep-cool-king-bd2dv5cs-pooler.c-8.us-east-2.aws.neon.tech`)  
@@ -12,32 +12,37 @@
 
 ## 1. Executive Summary & Vision
 
-**Aura** is a high-performance, developer-first distributed feature flag and remote configuration platform. It enables engineering teams to decouple deployment from release, safely roll out features with progressive canary exposure, coordinate flag states directly with GitHub branch/PR workflows, and maintain an immutable audit trail for compliance.
+**Aura** is a high-performance, developer-first distributed feature flag and remote configuration platform. It enables engineering teams to decouple deployment from release, safely roll out features with progressive canary exposure, coordinate flag states directly with GitHub branch/PR workflows, enforce Four-Eyes governance over critical environments, broadcast real-time HMAC-signed webhooks, and interface seamlessly with AI coding agents (Cursor, Antigravity, Claude) via Model Context Protocol (MCP).
 
 ```mermaid
 flowchart LR
-    subgraph ClientApps["Client Applications"]
+    subgraph ClientApps["Client Applications & AI Agents"]
         Web["Web Apps (React/Next.js)"]
         Micro["Backend Microservices"]
-        SDK["@aura/sdk Client"]
+        AI["AI Agents (Cursor / Antigravity MCP)"]
+        SDK["@aura-flags/client & react"]
     end
 
     subgraph AuraPlatform["Aura Control Plane"]
-        Dashboard["Vercel SPA Dashboard"]
+        Dashboard["Vercel SPA Dashboard & Governance"]
         API["Render Spring Boot 3 Engine"]
-        DB[(Neon PostgreSQL)]
+        DB[(Neon PostgreSQL Pool)]
     end
 
-    subgraph Integrations["Ecosystem"]
+    subgraph Integrations["Ecosystem & Governance"]
         GH["GitHub App (PR & Branch Sync)"]
-        Actions["Keep-Alive / CI/CD"]
+        WH["Outbound Webhooks (Slack/Discord)"]
+        FourEyes["Four-Eyes Peer Review Safeguard"]
+        Actions["14-min Heartbeat / Keep-Alive"]
     end
 
-    ClientApps -->|"Lightweight Evaluation (sub-5ms)"| API
-    Dashboard -->|"Admin & Telemetry REST"| API
+    ClientApps -->|"Evaluation & MCP Tools"| API
+    Dashboard -->|"Admin, Telemetry & Review"| API
     API -->|"Persistent State"| DB
+    API -->|"HMAC-Signed Events"| WH
     GH -->|"PR & Merged Webhooks"| API
-    Actions -->|"14-min Heartbeat"| API
+    Actions -->|"14-min Keepalive"| API
+    API -->|"SSE Real-time Push (<15ms)"| ClientApps
 ```
 
 ---
@@ -54,6 +59,8 @@ timeline
     Phase 5 : Production Deployment ($0 Budget) : Render Backend & Vercel Client & 14-min Heartbeat
     Phase 6 : GitHub App Integration : 1-Click Install & PR Webhook Coordination
     Phase 7 : Advanced Targeting & SSE Stream : MurmurHash3 Canary & <15ms Push & SDKs
+    Phase 8 : GitHub Bot & Tech Debt Scanner : PR Commenting, Merge Graduation & Cleanup PRs
+    Phase 9 : AI & Enterprise Governance : MCP Server, Four-Eyes Approvals & HMAC Webhooks
 ```
 
 ### Phase 1: Hallmark Console Design System Overhaul ✅
@@ -130,6 +137,35 @@ timeline
      - Created **Tech Debt & Stale Flag Scanner** page ([`StaleFlags.tsx`](file:///Users/sahilgavankar/Desktop/MEGA/client/src/pages/StaleFlags.tsx)) with interactive filtering, 1-click archiving, and refactoring PR diff generation.
      - Added 5 automated unit and integration tests in [`GithubBotAndStaleFlagTest.java`](file:///Users/sahilgavankar/Desktop/MEGA/server/src/test/java/com/aura/GithubBotAndStaleFlagTest.java) with 100% pass rate.
 
+### Phase 9: AI Model Context Protocol (MCP) & Enterprise Governance ✅
+* **Objective:** Enable AI agent interoperability (Cursor, Antigravity, Claude Desktop), enforce Four-Eyes change approvals on critical environments, and broadcast signed outbound event webhooks.
+* **Implementation:**
+  1. **Aura Model Context Protocol (MCP) Server:**
+     - Created `packages/aura-mcp/`: Lightweight TypeScript JSON-RPC bridge adhering to the Anthropic MCP specification.
+     - Implemented 7 high-level AI tools in [`McpServerService.java`](file:///Users/sahilgavankar/Desktop/MEGA/server/src/main/java/com/aura/service/McpServerService.java) and [`McpController.java`](file:///Users/sahilgavankar/Desktop/MEGA/server/src/main/java/com/aura/controller/McpController.java):
+       - `list_flags`: Lists all feature flags in project with current states & rollouts.
+       - `get_flag`: Retrieves full metadata, environments, and targeting rules for a flag.
+       - `toggle_flag`: Enables or disables a flag in a specific environment.
+       - `update_rollout`: Updates gradual percentage rollout (0-100%) for safe canary releases.
+       - `evaluate_flags`: Evaluates all flags for simulated user context (attributes, groups).
+       - `get_tech_debt`: Scans repository and returns stale/dormant flag debt analysis.
+       - `cleanup_flag`: Generates automated branch & PR instructions to excise a retired flag.
+     - Zero third-party bloat; runs via stdio or authenticated HTTP JSON-RPC (`POST /api/mcp/rpc`).
+  2. **Four-Eyes Peer Review Safeguard:**
+     - Extended Neon PostgreSQL schema with `ChangeRequest` table and `require_approval` boolean on `environments`.
+     - When an environment is protected (e.g. `production`), flag state alterations enter `PENDING` state as a `ChangeRequest`.
+     - Senior administrators review and approve/reject change requests via [`ChangeRequestService.java`](file:///Users/sahilgavankar/Desktop/MEGA/server/src/main/java/com/aura/service/ChangeRequestService.java) and [`ChangeRequestController.java`](file:///Users/sahilgavankar/Desktop/MEGA/server/src/main/java/com/aura/controller/ChangeRequestController.java).
+     - Upon approval, flag state is updated, audited, and broadcast to all connected SSE clients in `<15ms`.
+  3. **HMAC-SHA256 Signed Outbound Webhooks:**
+     - Created `Webhook` table and [`WebhookDispatchService.java`](file:///Users/sahilgavankar/Desktop/MEGA/server/src/main/java/com/aura/service/WebhookDispatchService.java).
+     - Subscribes to Spring `FlagStateChangedEvent` asynchronously via worker pool.
+     - Signs payload using HMAC-SHA256 via `X-Aura-Signature` header and dispatches HTTP POST requests to Slack, Discord, Datadog, or internal microservices.
+     - Includes live test ping diagnostics endpoint (`POST /projects/{id}/webhooks/{id}/test`) reporting latency and HTTP status.
+  4. **Frontend Enterprise Governance Portal:**
+     - Created [`Governance.tsx`](file:///Users/sahilgavankar/Desktop/MEGA/client/src/pages/Governance.tsx) with Four-Eyes review queue, Outbound Webhooks manager with live test pings, AI MCP configuration guide with 1-click configs for Cursor & Claude Desktop, interactive MCP tool tester playground, and per-environment protection toggles.
+  5. **Automated Verification:**
+     - Created [`McpAndGovernanceTest.java`](file:///Users/sahilgavankar/Desktop/MEGA/server/src/test/java/com/aura/McpAndGovernanceTest.java) testing the full review lifecycle, webhook dispatch, and MCP tool execution with 100% pass rate.
+
 ---
 
 ## 3. Current System Capabilities Inventory
@@ -159,127 +195,78 @@ timeline
 | Stale Flag Tech Debt Scan | `GET /api/projects/{id}/stale-flags` | `/projects/:id/stale-flags` | ✅ Production Live |
 | Automated Cleanup PR Generator | `POST /projects/{id}/flags/{key}/cleanup-pr` | Refactor Diff Modal | ✅ Production Live |
 | Flag Retirement & Archiving | `POST /projects/{id}/flags/{key}/archive` | `/projects/:id/stale-flags` | ✅ Production Live |
+| Four-Eyes Change Requests | `POST /projects/{id}/change-requests` | `/projects/:id/governance` | ✅ Production Live |
+| Peer Review & Apply Action | `POST /projects/{id}/change-requests/{id}/review` | `/projects/:id/governance` | ✅ Production Live |
+| Outbound HMAC Webhooks | `POST /projects/{id}/webhooks` | `/projects/:id/governance` | ✅ Production Live |
+| Webhook Latency Ping Test | `POST /projects/{id}/webhooks/{id}/test` | `/projects/:id/governance` | ✅ Production Live |
+| AI MCP Agent Tool Server | `POST /api/mcp/rpc` & `aura-mcp` CLI | Cursor & Claude Desktop | ✅ Production Live |
+| Environment Protection Policy | `PATCH /projects/{id}/environments/{id}/approval` | `/projects/:id/governance` | ✅ Production Live |
 
 ---
 
 ## 4. Future Implementation Roadmap (Planning Ahead)
 
-The next horizons focus on making Aura enterprise-grade, real-time, and deeply integrated into AI workflows.
+The next horizons focus on hyper-scale edge resilience and multi-region distributed streaming.
 
 ```mermaid
 flowchart TD
-    subgraph NearTerm["Phase 7 & 8: Advanced Targeting, SSE & CI/CD (Completed)"]
-        P7["Canary Rollouts, Targeting & Real-time SSE Push ✅"]
+    subgraph CoreEngine["Aura Platform (Phases 1–9 Complete)"]
+        P1_7["Canary Rollouts, Targeting & Real-time SSE Push ✅"]
         P8["PR Comment Bot, Auto-Graduation & Stale Flag Scanner ✅"]
+        P9["AI MCP Server, Four-Eyes Approvals & HMAC Webhooks ✅"]
     end
 
-    subgraph LongTerm["Phase 9: AI & Enterprise Governance (Next Up)"]
-        P9A["Aura MCP Server for Cursor & Antigravity"]
-        P9B["Four-Eyes Approval Workflow for Production"]
-        P9C["Outbound Webhooks (Slack/Discord/Datadog)"]
+    subgraph Horizon["Phase 10: Hyper-Scale & Edge Resilience"]
+        P10A["Multi-Region Cloudflare Workers Edge Flag Evaluation"]
+        P10B["Distributed In-Memory Redis Cache & Invalidation"]
+        P10C["Enterprise SAML 2.0 / OIDC Single Sign-On"]
     end
 
-    NearTerm --> LongTerm
+    CoreEngine --> Horizon
 ```
 
 ---
 
-### Detailed Technical Specifications for Future Phases
+### Detailed Technical Specifications for Future Horizons
 
-### Phase 7: Advanced Targeting & Real-Time Streaming (Immediate Priority)
-
-#### 7.1 User Segmentation & Percentage Rollouts (Canary Releases)
-* **Goal:** Instead of just binary `true/false`, allow flags to target specific user subsets (e.g. `rollout: 25%`, `email endsWith '@company.com'`, `country IN ['US', 'IN']`).
+#### 10.1 Multi-Region Cloudflare Workers Edge Flag Evaluation
+* **Goal:** Sub-1ms global evaluation at the CDN edge.
 * **Technical Strategy:**
-  - Add `rules` column (`JSONB` in Postgres, `String` in JPA entity) to `FeatureState`.
-  - Use deterministic hashing (MurmurHash3 on `userId + flagKey`) modulo 100 for consistent percentage bucketing without maintaining server-side user state.
-  - Update `EvaluationController.java` to accept context attributes:
-    ```bash
-    POST /api/v1/evaluate
-    {"userId": "usr_123", "email": "dev@company.com", "attributes": {"betaUser": true}}
-    ```
+  - Synchronize flag configuration snapshots to Cloudflare KV or Edge D1 upon SSE event broadcast.
+  - Evaluate user attributes and MurmurHash3 bucketing directly at edge points of presence across 300+ global cities.
 
-#### 7.2 Real-Time Flag Push via Server-Sent Events (SSE)
-* **Goal:** Eliminate client polling interval (currently 2500ms in `aura-sdk.js`). When a flag is toggled on Aura Dashboard, connected client applications update in **<50ms**.
+#### 10.2 Distributed Redis Cache Layer
+* **Goal:** Zero database round-trips for high-throughput microservice clusters.
 * **Technical Strategy:**
-  - Create endpoint: `GET /api/v1/stream?apiKey=...&environment=...` in Spring Boot returning `SseEmitter`.
-  - When `FeatureService.toggleFlag()` executes, publish an internal Spring ApplicationEvent that broadcasts the updated flag payload to all open client SSE connections for that project/environment.
-  - In `AuraClient` SDK, replace `setInterval` polling with an `EventSource` connection that automatically falls back to polling if the connection drops.
+  - Cache active project flag maps in Redis with pub/sub cache invalidation.
+  - Scale evaluation endpoint to 100,000+ queries per second per node.
 
-#### 7.3 Official SDK Packaging (npm)
-* **Goal:** Publish modular client libraries to npm:
-  - `@aura-flags/client` (Vanilla JS / TypeScript)
-  - `@aura-flags/react` (Hooks: `useFeatureFlag('beta-feature')`, `<FeatureGate flag="...">`)
-  - `@aura-flags/next` (Edge middleware integration to prevent UI flicker on SSR)
+#### 10.3 Enterprise SAML / OIDC Single Sign-On
+* **Goal:** Seamless corporate identity provider integration (Okta, Azure AD, Google Workspace).
 
 ---
 
-### Phase 8: GitHub App Intelligence & CI/CD Automation
-
-#### 8.1 Automated PR Commenting Bot
-* **Goal:** When an engineer opens a pull request in their repository, Aura GitHub App scans the modified files, detects references to `aura.isEnabled('flag-key')`, and automatically posts a markdown comment on the PR:
-  > **🚩 Aura Feature Flags Report**  
-  > This pull request touches **2 feature flags**:  
-  > • `new-checkout-v2` → Currently **Disabled** on Production (Staging: Enabled)  
-  > • `dark-mode-v2` → Currently **100% Active**
-
-#### 8.2 Auto-Graduate Rollout on Merge
-* **Goal:** Configure flags to auto-toggle when PRs are merged. For example: merging branch `feature/copilot` into `staging` automatically flips the flag on the Staging environment.
-
-#### 8.3 Stale Flag Code Scanner
-* **Goal:** Feature flag debt is a major issue in software engineering. Aura will detect flags that have been enabled for 100% of users for more than 30 days and flag them as "Ready for Retirement", with a button to auto-generate a GitHub PR removing the conditional check from code.
-
----
-
-### Phase 9: Model Context Protocol (MCP) & Enterprise Governance
-
-#### 9.1 Aura MCP Server for AI IDEs (Cursor, Antigravity, VS Code)
-* **Goal:** Allow AI agents to view and toggle flags directly from the developer's chat prompt.
-* **Tools exposed to AI agents:**
-  - `list_flags(projectId)`
-  - `create_flag(key, description, defaultEnabled)`
-  - `toggle_flag(env, key, enabled)`
-  - `evaluate_flags(userId, context)`
-
-#### 9.2 Four-Eyes Approval Workflow (Production Safeguard)
-* **Goal:** Require peer approval before changes apply to critical environments.
-* **Workflow:**
-  - Junior developer or Editor requests flag toggle on `Production`.
-  - Flag enters `PENDING_APPROVAL` state.
-  - Admin receives notification/email and clicks **Approve** in Aura dashboard.
-  - State changes and writes to audit log with both requester and approver metadata.
-
-#### 9.3 Outbound Webhooks (Integrations)
-* **Goal:** Notify external services on flag toggles:
-  - Slack / Microsoft Teams channel notifications.
-  - Datadog / New Relic markers (correlate error spikes with flag toggle timestamps).
-
----
-
-## 5. Planning Ahead: Execution Guide for Phase 7
-
-To tackle Phase 7 smoothly, here is the exact step-by-step preparation checklist:
+## 5. Architectural Guarantees & Non-Negotiables
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│               PHASE 7 IMPLEMENTATION CHECKLIST               │
+│                 AURA ARCHITECTURAL GUARANTEES               │
 ├─────────────────────────────────────────────────────────────┤
-│ 1. Database Schema Extension:                               │
-│    - Add 'rules' (TEXT/JSON) to FeatureState entity         │
-│    - Add 'targeting_attribute' enum/model                   │
+│ 1. Sub-5ms Local Evaluation:                                │
+│    In-memory MurmurHash3 deterministic bucketing.           │
 │                                                             │
-│ 2. Backend Engine:                                          │
-│    - Add Murmur3 hashing utility for percentage rollouts    │
-│    - Add SseEmitter registry in Spring Boot                 │
-│    - Wire Spring ApplicationEventPublisher on flag toggles  │
+│ 2. Real-Time Push (<15ms):                                  │
+│    SseEmitter broadcast on every state & rule transition.   │
 │                                                             │
-│ 3. Frontend UI Updates:                                     │
-│    - Add Targeting Rule Builder modal in FeatureGrid        │
-│    - Percentage slider (0% -> 100%) in flag row             │
+│ 3. Zero Cloud Inactivity Downtime ($0 Budget):              │
+│    Keep-alive heartbeat workflow runs every 14 minutes.     │
 │                                                             │
-│ 4. Client SDK:                                              │
-│    - Upgrade aura-sdk.js to support SSE EventSource         │
-│    - Add evaluation context payload passing                 │
+│ 4. AI & CI/CD Native:                                       │
+│    Full MCP stdio/RPC support for Cursor & Claude, plus     │
+│    automated GitHub App PR checks and merge hooks.          │
+│                                                             │
+│ 5. Four-Eyes Production Safeguards:                         │
+│    Enforce peer approvals for critical deployments.         │
 └─────────────────────────────────────────────────────────────┘
 ```
 

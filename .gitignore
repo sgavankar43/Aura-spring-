@@ -38,6 +38,4 @@ Thumbs.db
 *.log
 logs/
 
-# Separate client test website
-testing-website/
 

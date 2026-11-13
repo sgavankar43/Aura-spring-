@@ -56,8 +56,8 @@ else
     fi
 fi
 
-# 3. Clean up any existing stale processes on ports 8080 and 5173
-for port in 8080 5173; do
+# 3. Clean up any existing stale processes on ports 8080, 5173, and 3000
+for port in 8080 5173 3000; do
     stale_pids=$(lsof -ti :$port 2>/dev/null || true)
     if [ -n "$stale_pids" ]; then
         echo -e "${YELLOW}🧹 Clearing stale process on port $port (PID: $stale_pids)...${RESET}"
@@ -81,7 +81,8 @@ cleanup() {
     echo -e "${YELLOW}🛑 Shutting down Aura Platform services...${RESET}"
     kill "$SERVER_PID" 2>/dev/null || true
     kill "$CLIENT_PID" 2>/dev/null || true
-    for port in 8080 5173; do
+    kill "$TEST_SITE_PID" 2>/dev/null || true
+    for port in 8080 5173 3000; do
         lsof -ti :$port 2>/dev/null | xargs kill -9 2>/dev/null || true
     done
     echo -e "${GREEN}✅ All services stopped successfully.${RESET}"
@@ -100,6 +101,12 @@ SERVER_PID=$!
     echo -e "${MAGENTA}[FRONTEND]${RESET} $line"
 done &
 CLIENT_PID=$!
+
+# 7. Launch Testing Website (NovaStore Demo on Port 3000)
+(python3 -m http.server 3000 -d testing-website) 2>&1 | while IFS= read -r line; do
+    echo -e "${BLUE}[TEST-STORE]${RESET} $line"
+done &
+TEST_SITE_PID=$!
 
 # 7. Wait for Backend Health Check
 echo -e "${BLUE}⏳ Waiting for Spring Boot Backend to initialize...${RESET}"
@@ -137,17 +144,18 @@ echo ""
 echo -e "${GREEN}╔════════════════════════════════════════════════════════════════════════╗${RESET}"
 echo -e "${GREEN}║${RESET}                ${BOLD}🌟 AURA PLATFORM IS RUNNING LOCALLY${RESET}                    ${GREEN}║${RESET}"
 echo -e "${GREEN}╠════════════════════════════════════════════════════════════════════════╣${RESET}"
-echo -e "${GREEN}║${RESET}  ${BOLD}Frontend UI:${RESET}       ${CYAN}http://localhost:5173${RESET}                                   ${GREEN}║${RESET}"
-echo -e "${GREEN}║${RESET}  ${BOLD}Backend API:${RESET}       ${CYAN}http://localhost:8080${RESET}                                   ${GREEN}║${RESET}"
-echo -e "${GREEN}║${RESET}  ${BOLD}Health Check:${RESET}      ${CYAN}http://localhost:8080/health${RESET}                            ${GREEN}║${RESET}"
+echo -e "${GREEN}║${RESET}  ${BOLD}Frontend Dashboard:${RESET}  ${CYAN}http://localhost:5173${RESET}                                   ${GREEN}║${RESET}"
+echo -e "${GREEN}║${RESET}  ${BOLD}Testing Store App:${RESET}   ${CYAN}http://localhost:3000${RESET}                                   ${GREEN}║${RESET}"
+echo -e "${GREEN}║${RESET}  ${BOLD}Backend API Engine:${RESET}  ${CYAN}http://localhost:8080${RESET}                                   ${GREEN}║${RESET}"
+echo -e "${GREEN}║${RESET}  ${BOLD}Health Check:${RESET}        ${CYAN}http://localhost:8080/health${RESET}                            ${GREEN}║${RESET}"
 echo -e "${GREEN}║${RESET}                                                                        ${GREEN}║${RESET}"
 echo -e "${GREEN}║${RESET}  ${BOLD}🔑 SEED CREDENTIALS:${RESET}                                                  ${GREEN}║${RESET}"
-echo -e "${GREEN}║${RESET}  • ${BOLD}Admin Account:${RESET}   ${YELLOW}admin@aura.dev${RESET}     / ${YELLOW}AdminPassword123!${RESET}         ${GREEN}║${RESET}"
-echo -e "${GREEN}║${RESET}  • ${BOLD}Developer:${RESET}       ${YELLOW}developer@aura.dev${RESET} / ${YELLOW}DevPassword123!${RESET}           ${GREEN}║${RESET}"
+echo -e "${GREEN}║${RESET}  • ${BOLD}Admin Account:${RESET}      ${YELLOW}admin@aura.dev${RESET}     / ${YELLOW}AdminPassword123!${RESET}         ${GREEN}║${RESET}"
+echo -e "${GREEN}║${RESET}  • ${BOLD}Developer:${RESET}          ${YELLOW}developer@aura.dev${RESET} / ${YELLOW}DevPassword123!${RESET}           ${GREEN}║${RESET}"
 echo -e "${GREEN}║${RESET}                                                                        ${GREEN}║${RESET}"
 echo -e "${GREEN}║${RESET}  Press ${BOLD}Ctrl+C${RESET} in this terminal to stop all running services.          ${GREEN}║${RESET}"
 echo -e "${GREEN}╚════════════════════════════════════════════════════════════════════════╝${RESET}"
 echo ""
 
 # Keep process alive and stream output
-wait "$SERVER_PID" "$CLIENT_PID"
+wait "$SERVER_PID" "$CLIENT_PID" "$TEST_SITE_PID"

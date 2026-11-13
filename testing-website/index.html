@@ -25,6 +25,12 @@
     </div>
 
     <div class="aura-sync-right">
+      <label for="aura-target-backend" style="font-size: 0.75rem; color: var(--text-muted); font-weight: 500;">Backend:</label>
+      <select id="aura-target-backend" class="env-select">
+        <option value="cloud">Cloud (Render Live)</option>
+        <option value="local">Local (localhost:8080)</option>
+      </select>
+
       <label for="aura-user-select" style="font-size: 0.75rem; color: var(--text-muted); font-weight: 500;">User Context:</label>
       <select id="aura-user-select" class="env-select">
         <option value="alice">Alice (usr_alice · @aura.dev)</option>

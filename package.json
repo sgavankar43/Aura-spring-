@@ -8,6 +8,7 @@
     "dev": "./start.sh",
     "dev:client": "npm run dev --prefix client",
     "dev:server": "cd server && ./mvnw spring-boot:run",
+    "dev:store": "python3 -m http.server 3000 -d testing-website",
     "build": "npm run build --prefix client && cd server && ./mvnw compile",
     "lint": "npm run lint --prefix client"
   },

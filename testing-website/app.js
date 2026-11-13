@@ -319,6 +319,26 @@ window.addEventListener('DOMContentLoaded', () => {
     applyFeatureFlags(state);
   });
 
+  // Backend Target Selector Change
+  const backendSelect = document.getElementById('aura-target-backend');
+  if (backendSelect) {
+    backendSelect.value = API_ENDPOINT.includes('localhost') ? 'local' : 'cloud';
+    backendSelect.addEventListener('change', async (e) => {
+      const mode = e.target.value;
+      const newEndpoint = mode === 'local'
+        ? 'http://localhost:8080/api/v1/evaluate'
+        : 'https://aura-spring.onrender.com/api/v1/evaluate';
+      addInspectorLog(`🔌 Switching Backend Target to: ${mode.toUpperCase()} (${newEndpoint})`);
+      aura.endpoint = newEndpoint;
+      aura.streamEndpoint = newEndpoint.replace('/evaluate', '/stream');
+      if (aura.eventSource) {
+        aura.connectStream();
+      } else {
+        await aura.evaluate();
+      }
+    });
+  }
+
   // User Context Selector Change
   const userSelect = document.getElementById('aura-user-select');
   if (userSelect) {

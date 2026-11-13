@@ -12,6 +12,7 @@ import {
   ScrollText,
   Settings,
   Shapes,
+  ShieldCheck,
   Users,
   X,
 } from 'lucide-react';
@@ -100,12 +101,12 @@ export default function DashboardLayout() {
 
       <aside
         className={cn(
-          'fixed inset-y-0 left-0 z-50 flex w-60 flex-col border-r border-border bg-card transition-transform md:static md:translate-x-0',
+          'fixed inset-y-0 left-0 z-50 flex h-screen max-h-screen w-60 flex-col border-r border-border bg-card transition-transform md:sticky md:top-0 md:translate-x-0',
           mobileNavOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0',
         )}
         data-testid="sidebar"
       >
-        <div className="flex items-center justify-between border-b border-border p-4 md:block">
+        <div className="flex shrink-0 items-center justify-between border-b border-border p-4 md:block">
           <div>
             <h1 className="text-sm font-semibold tracking-tight text-foreground">
               Aura Control Plane
@@ -124,7 +125,7 @@ export default function DashboardLayout() {
           </Button>
         </div>
 
-        <nav className="flex flex-1 flex-col gap-1 p-3">
+        <nav className="flex flex-1 flex-col gap-1 p-3 overflow-y-auto min-h-0">
           <NavLink to="/projects" className={navLinkClass} data-testid="nav-projects" end>
             <LayoutDashboard className="h-4 w-4 shrink-0" />
             Projects
@@ -195,6 +196,14 @@ export default function DashboardLayout() {
                 Templates
               </NavLink>
               <NavLink
+                to={`/projects/${projectId}/governance`}
+                className={navLinkClass}
+                data-testid="nav-governance"
+              >
+                <ShieldCheck className="h-4 w-4 shrink-0" />
+                Governance
+              </NavLink>
+              <NavLink
                 to={`/projects/${projectId}/team`}
                 className={navLinkClass}
                 data-testid="nav-team"
@@ -222,10 +231,10 @@ export default function DashboardLayout() {
           ) : null}
         </nav>
 
-        <div className="border-t border-border p-3">
+        <div className="border-t border-border p-3 shrink-0 bg-card">
           <div className="flex items-center gap-2 rounded-md bg-paper p-2 border border-border">
             <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded bg-primary text-xs font-semibold text-primary-foreground">
-              {user?.name.charAt(0).toUpperCase()}
+              {user?.name ? user.name.charAt(0).toUpperCase() : 'U'}
             </div>
             <div className="min-w-0 flex-1">
               <p className="truncate text-xs font-medium text-foreground">{user?.name}</p>
@@ -235,7 +244,7 @@ export default function DashboardLayout() {
               type="button"
               variant="ghost"
               size="icon"
-              className="h-7 w-7 shrink-0 text-muted-foreground hover:text-destructive"
+              className="h-7 w-7 shrink-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
               onClick={logout}
               title="Sign out"
               data-testid="logout"
@@ -247,7 +256,7 @@ export default function DashboardLayout() {
       </aside>
 
       <div className="flex min-h-screen min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-30 flex h-14 items-center justify-between border-b border-border bg-background px-4 md:px-8">
+        <header className="sticky top-0 z-30 flex h-14 items-center justify-between border-b border-border bg-background/95 backdrop-blur px-4 md:px-8">
           <div className="flex items-center gap-3">
             <Button
               type="button"
@@ -265,7 +274,7 @@ export default function DashboardLayout() {
           <ThemeToggle />
         </header>
 
-        <main className="flex-1 overflow-auto p-4 md:p-8">
+        <main className="flex-1 p-4 md:p-8 min-w-0">
           <Outlet />
         </main>
       </div>

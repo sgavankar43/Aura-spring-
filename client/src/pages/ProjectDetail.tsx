@@ -74,6 +74,9 @@ export default function ProjectDetail() {
         <NavLink to="github" className={tabClass} data-testid="tab-github">
           GitHub
         </NavLink>
+        <NavLink to="stale-flags" className={tabClass} data-testid="tab-stale-flags">
+          Tech Debt
+        </NavLink>
         <NavLink to="templates" className={tabClass} data-testid="tab-templates">
           Templates
         </NavLink>

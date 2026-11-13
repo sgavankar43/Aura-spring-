@@ -3,6 +3,7 @@ package com.aura.controller;
 import com.aura.dto.*;
 import com.aura.security.UserPrincipal;
 import com.aura.service.FeatureService;
+import com.aura.service.GithubBotService;
 import com.aura.service.GithubService;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
@@ -19,10 +20,15 @@ public class GithubController {
 
     private final GithubService githubService;
     private final FeatureService featureService;
+    private final GithubBotService githubBotService;
 
-    public GithubController(GithubService githubService, FeatureService featureService) {
+    public GithubController(
+            GithubService githubService,
+            FeatureService featureService,
+            GithubBotService githubBotService) {
         this.githubService = githubService;
         this.featureService = featureService;
+        this.githubBotService = githubBotService;
     }
 
     @PostMapping("/github/connect")
@@ -93,6 +99,31 @@ public class GithubController {
     ) {
         return ResponseEntity.ok(featureService.linkFeatureToGithub(
                 projectId, featureId, request.getBranch(), request.getPrNumber(), principal
+        ));
+    }
+
+    @PostMapping("/github/pulls/{prNumber}/scan")
+    public ResponseEntity<GithubPrScanResultDto> scanPullRequest(
+            @PathVariable UUID projectId,
+            @PathVariable int prNumber,
+            @RequestParam(defaultValue = "true") boolean postComment,
+            @AuthenticationPrincipal UserPrincipal principal
+    ) {
+        return ResponseEntity.ok(githubBotService.scanAndCommentOnPullRequest(projectId, prNumber, postComment, principal));
+    }
+
+    @PostMapping("/github/pulls/{prNumber}/simulate-merge")
+    public ResponseEntity<GithubPrGraduationResultDto> simulateMergeGraduation(
+            @PathVariable UUID projectId,
+            @PathVariable int prNumber,
+            @RequestParam(defaultValue = "main") String baseBranch,
+            @RequestParam(required = false) String headBranch,
+            @RequestParam(required = false) String prTitle,
+            @RequestParam(defaultValue = "false") boolean postComment,
+            @AuthenticationPrincipal UserPrincipal principal
+    ) {
+        return ResponseEntity.ok(githubBotService.graduateFlagsOnMerge(
+                projectId, prNumber, baseBranch, headBranch, prTitle, postComment, principal
         ));
     }
 }

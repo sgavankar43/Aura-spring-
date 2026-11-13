@@ -1,7 +1,9 @@
 import {
   AlertCircle,
   ArrowLeft,
+  Bot,
   Check,
+  CheckCircle2,
   ChevronRight,
   Clock,
   Code2,
@@ -16,6 +18,7 @@ import {
   GitPullRequest,
   Lock,
   RefreshCw,
+  Sparkles,
   Star,
   Tag,
   Trash2,
@@ -38,9 +41,11 @@ import {
   useGithubStatus,
   useGithubTags,
   useGithubTree,
+  useScanPr,
+  useSimulateMergeGraduation,
 } from '@/hooks/queries';
 import { cn } from '@/lib/utils';
-import type { GithubContent, Project } from '@/types/domain';
+import type { GithubContent, GithubPrGraduationResult, GithubPrScanResult, Project } from '@/types/domain';
 
 type ActiveTab = 'commits' | 'branches' | 'tags' | 'prs' | 'code';
 
@@ -70,6 +75,13 @@ export default function ProjectGithub() {
 
   const isConnected = Boolean(status?.connected);
   const effectiveBranch = selectedBranch || status?.defaultBranch || 'main';
+
+  // Phase 8: PR Bot & Auto-Graduation
+  const scanPrMutation = useScanPr(project.id);
+  const simulateMergeMutation = useSimulateMergeGraduation(project.id);
+  const [prScanResult, setPrScanResult] = useState<GithubPrScanResult | null>(null);
+  const [prGradResult, setPrGradResult] = useState<GithubPrGraduationResult | null>(null);
+  const [activePrAction, setActivePrAction] = useState<number | null>(null);
 
   // Fetch sub-resources when connected
   const { data: branches, isLoading: branchesLoading } = useGithubBranches(project.id, isConnected);
@@ -721,17 +733,64 @@ export default function ProjectGithub() {
                     </div>
                   </div>
 
-                  {pr.htmlUrl ? (
-                    <a
-                      href={pr.htmlUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="self-start sm:self-auto inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-medium hover:bg-muted transition-colors shrink-0"
+                  <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto shrink-0">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={async () => {
+                        setActivePrAction(pr.number);
+                        try {
+                          const res = await scanPrMutation.mutateAsync({ prNumber: pr.number, postComment: true });
+                          setPrScanResult(res);
+                        } finally {
+                          setActivePrAction(null);
+                        }
+                      }}
+                      disabled={activePrAction === pr.number && scanPrMutation.isPending}
+                      className="gap-1 text-xs"
+                      title="Scan PR for Aura feature flags and post bot report"
                     >
-                      <span>View on GitHub</span>
-                      <ExternalLink className="h-3 w-3" />
-                    </a>
-                  ) : null}
+                      <Bot className="h-3.5 w-3.5 text-primary" />
+                      <span>{activePrAction === pr.number && scanPrMutation.isPending ? 'Scanning...' : 'Bot Report'}</span>
+                    </Button>
+
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={async () => {
+                        setActivePrAction(pr.number);
+                        try {
+                          const res = await simulateMergeMutation.mutateAsync({
+                            prNumber: pr.number,
+                            baseBranch: pr.baseBranch,
+                            headBranch: pr.headBranch,
+                            prTitle: pr.title,
+                          });
+                          setPrGradResult(res);
+                        } finally {
+                          setActivePrAction(null);
+                        }
+                      }}
+                      disabled={activePrAction === pr.number && simulateMergeMutation.isPending}
+                      className="gap-1 text-xs text-emerald-600 dark:text-emerald-400 hover:border-emerald-500/40"
+                      title="Simulate PR merge to auto-graduate associated flags to 100% active"
+                    >
+                      <Sparkles className="h-3.5 w-3.5 text-emerald-500" />
+                      <span>{activePrAction === pr.number && simulateMergeMutation.isPending ? 'Graduating...' : 'Auto-Graduate'}</span>
+                    </Button>
+
+                    {pr.htmlUrl ? (
+                      <a
+                        href={pr.htmlUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-medium hover:bg-muted transition-colors"
+                      >
+                        <span>GitHub</span>
+                        <ExternalLink className="h-3 w-3" />
+                      </a>
+                    ) : null}
+                  </div>
                 </div>
               ))}
             </div>
@@ -906,6 +965,98 @@ export default function ProjectGithub() {
           </Button>
         </div>
       </Modal>
+
+      {/* Phase 8: PR Bot Report Modal */}
+      {prScanResult ? (
+        <Modal
+          open={Boolean(prScanResult)}
+          onClose={() => setPrScanResult(null)}
+          title={`🤖 Aura Bot Report: PR #${prScanResult.prNumber}`}
+          description={prScanResult.prTitle}
+        >
+          <div className="space-y-4 pt-2">
+            <div className="rounded-lg border bg-muted/30 p-3 space-y-1.5 text-xs">
+              <div className="flex justify-between">
+                <span className="text-muted-foreground font-medium">Head Branch:</span>
+                <code className="font-mono text-primary font-semibold">{prScanResult.headBranch}</code>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground font-medium">Base Branch:</span>
+                <code className="font-mono font-semibold">{prScanResult.baseBranch}</code>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground font-medium">Detected Flags:</span>
+                <span className="font-bold text-foreground">{prScanResult.referencedFlags.length}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground font-medium">Bot Comment on GitHub:</span>
+                <span className={cn('font-semibold', prScanResult.commentPosted ? 'text-emerald-500' : 'text-muted-foreground')}>
+                  {prScanResult.commentPosted ? '✅ Active / Posted' : 'Preview Mode'}
+                </span>
+              </div>
+            </div>
+
+            {/* Markdown Report Preview */}
+            <div className="space-y-1">
+              <span className="text-xs font-semibold text-muted-foreground">Markdown Comment Payload:</span>
+              <pre className="rounded-lg border bg-zinc-950 p-3 text-xs font-mono text-zinc-100 overflow-x-auto max-h-60 whitespace-pre-wrap">
+                {prScanResult.commentMarkdown}
+              </pre>
+            </div>
+
+            <div className="flex justify-end pt-3 border-t">
+              <Button variant="default" size="sm" onClick={() => setPrScanResult(null)}>
+                Done
+              </Button>
+            </div>
+          </div>
+        </Modal>
+      ) : null}
+
+      {/* Phase 8: Auto-Graduation Notice Modal */}
+      {prGradResult ? (
+        <Modal
+          open={Boolean(prGradResult)}
+          onClose={() => setPrGradResult(null)}
+          title={`🎓 Flag Auto-Graduation: PR #${prGradResult.prNumber}`}
+          description={prGradResult.message}
+        >
+          <div className="space-y-4 pt-2">
+            <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 space-y-1 text-xs text-emerald-600 dark:text-emerald-400">
+              <div className="flex items-center gap-1.5 font-bold">
+                <CheckCircle2 className="h-4 w-4" />
+                <span>Auto-Graduation Executed Successfully!</span>
+              </div>
+              <p className="text-[11px] opacity-90">
+                Associated flags have been graduated to <strong>100% active</strong> on <code>{prGradResult.targetEnvironment}</code>.
+                Instant push was delivered to connected applications via SSE stream.
+              </p>
+            </div>
+
+            {prGradResult.graduatedFlags.length > 0 ? (
+              <div className="space-y-2">
+                <span className="text-xs font-semibold text-muted-foreground">Graduated Flags:</span>
+                <div className="divide-y rounded-lg border bg-card">
+                  {prGradResult.graduatedFlags.map((key) => (
+                    <div key={key} className="flex items-center justify-between p-2.5 text-xs">
+                      <span className="font-mono font-bold">{key}</span>
+                      <span className="rounded bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 px-2 py-0.5 font-semibold text-[11px]">
+                        100% Active
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+
+            <div className="flex justify-end pt-3 border-t">
+              <Button variant="default" size="sm" onClick={() => setPrGradResult(null)}>
+                Close
+              </Button>
+            </div>
+          </div>
+        </Modal>
+      ) : null}
     </div>
   );
 }

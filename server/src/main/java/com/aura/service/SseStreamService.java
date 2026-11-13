@@ -164,7 +164,7 @@ public class SseStreamService {
     }
 
     private EvaluationResponse buildSnapshot(Project project, Environment environment) {
-        List<Feature> features = featureRepository.findByProjectId(project.getId());
+        List<Feature> features = featureRepository.findByProjectIdAndArchivedAtIsNull(project.getId());
         Map<String, Boolean> flags = new HashMap<>();
 
         for (Feature feature : features) {

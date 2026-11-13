@@ -58,7 +58,7 @@ public class FeatureService {
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Project not found"));
 
         List<Environment> environments = environmentRepository.findByProjectIdOrderBySortOrderAsc(project.getId());
-        List<Feature> features = featureRepository.findByProjectId(project.getId());
+        List<Feature> features = featureRepository.findByProjectIdAndArchivedAtIsNull(project.getId());
 
         return features.stream().map(feature -> {
             Map<String, Boolean> states = new HashMap<>();
@@ -88,6 +88,8 @@ public class FeatureService {
                     .defaultEnabled(feature.getDefaultEnabled())
                     .githubBranch(feature.getGithubBranch())
                     .githubPrNumber(feature.getGithubPrNumber())
+                    .archivedAt(feature.getArchivedAt())
+                    .updatedAt(feature.getUpdatedAt())
                     .states(states)
                     .rolloutPercentages(rolloutPercentages)
                     .targetingRules(targetingRules)
@@ -146,6 +148,8 @@ public class FeatureService {
                 .defaultEnabled(feature.getDefaultEnabled())
                 .githubBranch(feature.getGithubBranch())
                 .githubPrNumber(feature.getGithubPrNumber())
+                .archivedAt(feature.getArchivedAt())
+                .updatedAt(feature.getUpdatedAt())
                 .states(states)
                 .rolloutPercentages(rolloutPercentages)
                 .targetingRules(targetingRules)
@@ -206,6 +210,8 @@ public class FeatureService {
                 .defaultEnabled(feature.getDefaultEnabled())
                 .githubBranch(feature.getGithubBranch())
                 .githubPrNumber(feature.getGithubPrNumber())
+                .archivedAt(feature.getArchivedAt())
+                .updatedAt(feature.getUpdatedAt())
                 .states(states)
                 .rolloutPercentages(rolloutPercentages)
                 .targetingRules(targetingRules)
@@ -335,7 +341,7 @@ public class FeatureService {
         Environment environment = environmentRepository.findByProjectIdAndSlug(project.getId(), envSlug)
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Environment '" + envSlug + "' not found for project"));
 
-        List<Feature> features = featureRepository.findByProjectId(project.getId());
+        List<Feature> features = featureRepository.findByProjectIdAndArchivedAtIsNull(project.getId());
         Map<String, Boolean> flags = new HashMap<>();
 
         for (Feature feature : features) {

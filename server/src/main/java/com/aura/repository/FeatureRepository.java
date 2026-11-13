@@ -11,8 +11,11 @@ import java.util.UUID;
 @Repository
 public interface FeatureRepository extends JpaRepository<Feature, UUID> {
     List<Feature> findByProjectId(UUID projectId);
+    List<Feature> findByProjectIdAndArchivedAtIsNull(UUID projectId);
+    List<Feature> findByProjectIdAndArchivedAtIsNotNull(UUID projectId);
     List<Feature> findByProjectIdAndGithubPrNumber(UUID projectId, Integer githubPrNumber);
     List<Feature> findByProjectIdAndGithubBranch(UUID projectId, String githubBranch);
     Optional<Feature> findByProjectIdAndKey(UUID projectId, String key);
+    Optional<Feature> findByProjectIdAndKeyAndArchivedAtIsNull(UUID projectId, String key);
     boolean existsByProjectIdAndKey(UUID projectId, String key);
 }

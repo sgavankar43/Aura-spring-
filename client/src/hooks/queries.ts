@@ -3,14 +3,18 @@ import { apiFetch, publicFetch } from '@/lib/api';
 import type {
   Environment,
   FeatureRow,
+  FlagCleanupPrResponse,
   GithubBranch,
   GithubCommit,
   GithubContent,
+  GithubPrGraduationResult,
+  GithubPrScanResult,
   GithubPullRequest,
   GithubStatus,
   GithubTag,
   PaginatedAuditLogs,
   Project,
+  StaleFlagReport,
 } from '@/types/domain';
 
 export function useProjects() {
@@ -354,6 +358,105 @@ export function useLinkFeatureGithub(projectId: string) {
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['features', projectId] });
+      queryClient.invalidateQueries({ queryKey: ['audit-logs', projectId] });
+    },
+  });
+}
+
+export function useStaleFlags(projectId: string | undefined) {
+  return useQuery({
+    queryKey: ['stale-flags', projectId],
+    queryFn: () => apiFetch<StaleFlagReport>(`/projects/${projectId}/stale-flags`),
+    enabled: Boolean(projectId),
+    staleTime: 30_000,
+  });
+}
+
+export function useArchiveFlag(projectId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (key: string) =>
+      apiFetch<{ message: string }>(`/projects/${projectId}/flags/${key}/archive`, {
+        method: 'POST',
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['features', projectId] });
+      queryClient.invalidateQueries({ queryKey: ['stale-flags', projectId] });
+      queryClient.invalidateQueries({ queryKey: ['audit-logs', projectId] });
+    },
+  });
+}
+
+export function useUnarchiveFlag(projectId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (key: string) =>
+      apiFetch<{ message: string }>(`/projects/${projectId}/flags/${key}/unarchive`, {
+        method: 'POST',
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['features', projectId] });
+      queryClient.invalidateQueries({ queryKey: ['stale-flags', projectId] });
+      queryClient.invalidateQueries({ queryKey: ['audit-logs', projectId] });
+    },
+  });
+}
+
+export function useGenerateCleanupPr(projectId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ key, createOnGithub }: { key: string; createOnGithub?: boolean }) =>
+      apiFetch<FlagCleanupPrResponse>(
+        `/projects/${projectId}/flags/${key}/cleanup-pr?createOnGithub=${Boolean(createOnGithub)}`,
+        { method: 'POST' }
+      ),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['stale-flags', projectId] });
+      queryClient.invalidateQueries({ queryKey: ['audit-logs', projectId] });
+    },
+  });
+}
+
+export function useScanPr(projectId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ prNumber, postComment }: { prNumber: number; postComment?: boolean }) =>
+      apiFetch<GithubPrScanResult>(
+        `/projects/${projectId}/github/pulls/${prNumber}/scan?postComment=${postComment !== false}`,
+        { method: 'POST' }
+      ),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['audit-logs', projectId] });
+    },
+  });
+}
+
+export function useSimulateMergeGraduation(projectId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      prNumber,
+      baseBranch,
+      headBranch,
+      prTitle,
+    }: {
+      prNumber: number;
+      baseBranch?: string;
+      headBranch?: string;
+      prTitle?: string;
+    }) => {
+      const params = new URLSearchParams();
+      if (baseBranch) params.set('baseBranch', baseBranch);
+      if (headBranch) params.set('headBranch', headBranch);
+      if (prTitle) params.set('prTitle', prTitle);
+      return apiFetch<GithubPrGraduationResult>(
+        `/projects/${projectId}/github/pulls/${prNumber}/simulate-merge?${params.toString()}`,
+        { method: 'POST' }
+      );
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['features', projectId] });
+      queryClient.invalidateQueries({ queryKey: ['stale-flags', projectId] });
       queryClient.invalidateQueries({ queryKey: ['audit-logs', projectId] });
     },
   });

@@ -46,6 +46,9 @@ public class Feature {
     @Column(name = "github_pr_number")
     private Integer githubPrNumber;
 
+    @Column(name = "archived_at")
+    private LocalDateTime archivedAt;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
@@ -61,7 +64,7 @@ public class Feature {
     }
 
     @Builder
-    public Feature(UUID id, Project project, String key, String name, String description, Boolean defaultEnabled, String githubBranch, Integer githubPrNumber, LocalDateTime createdAt, LocalDateTime updatedAt, List<FeatureState> states) {
+    public Feature(UUID id, Project project, String key, String name, String description, Boolean defaultEnabled, String githubBranch, Integer githubPrNumber, LocalDateTime archivedAt, LocalDateTime createdAt, LocalDateTime updatedAt, List<FeatureState> states) {
         this.id = id;
         this.project = project;
         this.key = key;
@@ -70,6 +73,7 @@ public class Feature {
         this.defaultEnabled = defaultEnabled;
         this.githubBranch = githubBranch;
         this.githubPrNumber = githubPrNumber;
+        this.archivedAt = archivedAt;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
         this.states = (states != null) ? states : new ArrayList<>();

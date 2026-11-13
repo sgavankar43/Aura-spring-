@@ -5,6 +5,7 @@ import com.aura.entity.GithubIntegration;
 import com.aura.repository.FeatureRepository;
 import com.aura.repository.GithubIntegrationRepository;
 import com.aura.service.AuditLogService;
+import com.aura.service.GithubBotService;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
@@ -25,16 +26,19 @@ public class GithubAppWebhookController {
     private final GithubIntegrationRepository githubRepository;
     private final FeatureRepository featureRepository;
     private final AuditLogService auditLogService;
+    private final GithubBotService githubBotService;
     private final ObjectMapper objectMapper;
 
     public GithubAppWebhookController(
             GithubIntegrationRepository githubRepository,
             FeatureRepository featureRepository,
             AuditLogService auditLogService,
+            GithubBotService githubBotService,
             ObjectMapper objectMapper) {
         this.githubRepository = githubRepository;
         this.featureRepository = featureRepository;
         this.auditLogService = auditLogService;
+        this.githubBotService = githubBotService;
         this.objectMapper = objectMapper;
     }
 
@@ -87,6 +91,7 @@ public class GithubAppWebhookController {
         JsonNode pr = payload.path("pull_request");
         int prNumber = pr.path("number").asInt();
         String prTitle = pr.path("title").asText();
+        String prBody = pr.path("body").asText("");
         boolean merged = pr.path("merged").asBoolean(false);
         String headBranch = pr.path("head").path("ref").asText();
         String baseBranch = pr.path("base").path("ref").asText();
@@ -103,6 +108,36 @@ public class GithubAppWebhookController {
                 .findByRepoOwnerIgnoreCaseAndRepoNameIgnoreCase(repoOwner, repoName);
 
         for (GithubIntegration integration : integrations) {
+            // 1. If PR merged -> trigger auto-graduation of canary rollouts
+            if (merged || "closed".equalsIgnoreCase(action) && pr.path("merged_at").asText(null) != null) {
+                log.info("PR #{} merged on {}/{}! Triggering flag auto-graduation...", prNumber, repoOwner, repoName);
+                githubBotService.graduateFlagsOnMerge(
+                        integration.getProject().getId(),
+                        prNumber,
+                        baseBranch,
+                        headBranch,
+                        prTitle,
+                        true,
+                        null
+                );
+            }
+            // 2. If PR opened or updated -> scan files & post/update bot comment report
+            else if ("opened".equalsIgnoreCase(action) || "synchronize".equalsIgnoreCase(action) ||
+                     "reopened".equalsIgnoreCase(action) || "ready_for_review".equalsIgnoreCase(action)) {
+                log.info("PR #{} {} on {}/{}. Scanning modified files for Aura flags...", prNumber, action, repoOwner, repoName);
+                githubBotService.executePrScanAndComment(
+                        integration,
+                        integration.getProject(),
+                        null,
+                        prNumber,
+                        prTitle,
+                        prBody,
+                        headBranch,
+                        baseBranch,
+                        true
+                );
+            }
+
             List<Feature> linkedFeatures = featureRepository
                     .findByProjectIdAndGithubPrNumber(integration.getProject().getId(), prNumber);
 

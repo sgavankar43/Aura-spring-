@@ -20,6 +20,7 @@ import ProjectGithub from '@/pages/ProjectGithub';
 import ProjectList from '@/pages/ProjectList';
 import ProjectSettings from '@/pages/ProjectSettings';
 import Register from '@/pages/Register';
+import StaleFlags from '@/pages/StaleFlags';
 import Team from '@/pages/Team';
 import Templates from '@/pages/Templates';
 
@@ -97,6 +98,7 @@ export default function App() {
                     <Route path="overview" element={<Overview />} />
                     <Route path="environments" element={<EnvironmentsPage />} />
                     <Route path="github" element={<ProjectGithub />} />
+                    <Route path="stale-flags" element={<StaleFlags />} />
                     <Route path="audit" element={<AuditLog />} />
                     <Route path="settings" element={<ProjectSettings />} />
                     <Route path="analytics" element={<Analytics />} />

@@ -147,3 +147,76 @@ export interface ProjectMember {
   role: 'ADMIN' | 'EDITOR' | 'VIEWER';
   createdAt: string;
 }
+
+export interface StaleFlagItem {
+  id: string;
+  key: string;
+  name: string;
+  description?: string | null;
+  status: 'READY_FOR_RETIREMENT' | 'DORMANT_INACTIVE' | 'IN_ROLLOUT' | 'HEALTHY_ACTIVE' | 'ARCHIVED';
+  daysSinceLastModified: number;
+  lastModified: string;
+  archivedAt?: string | null;
+  fullyRolledOut: boolean;
+  allDisabled: boolean;
+  states: Record<string, boolean>;
+  rolloutPercentages: Record<string, number>;
+  targetingRules?: Record<string, string>;
+  referencedFilesCount: number;
+  referencedFiles: string[];
+  recommendation: string;
+}
+
+export interface StaleFlagReport {
+  totalFlags: number;
+  staleCount: number;
+  dormantCount: number;
+  activeCount: number;
+  techDebtScore: number;
+  flags: StaleFlagItem[];
+}
+
+export interface GithubPrScanResult {
+  prNumber: number;
+  prTitle: string;
+  headBranch: string;
+  baseBranch: string;
+  repoOwner: string;
+  repoName: string;
+  filesTouchedCount: number;
+  referencedFlags: Array<{
+    key: string;
+    name: string;
+    description?: string;
+    states: Record<string, boolean>;
+    rolloutPercentages: Record<string, number>;
+    targetingRules?: Record<string, string>;
+    occurrencesInFiles: string[];
+  }>;
+  commentMarkdown: string;
+  commentPosted: boolean;
+  commentUrl?: string | null;
+}
+
+export interface GithubPrGraduationResult {
+  prNumber: number;
+  prTitle: string;
+  headBranch: string;
+  baseBranch: string;
+  targetEnvironment: string;
+  graduatedFlags: string[];
+  graduationDetails: Record<string, any>;
+  commentPosted: boolean;
+  message: string;
+}
+
+export interface FlagCleanupPrResponse {
+  flagKey: string;
+  branchName: string;
+  prTitle: string;
+  prBody: string;
+  diffPreview: string;
+  prUrl?: string | null;
+  status: string;
+  affectedFiles: string[];
+}

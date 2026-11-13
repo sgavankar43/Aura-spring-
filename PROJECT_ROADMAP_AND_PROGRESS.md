@@ -111,6 +111,25 @@ timeline
   6. **Official Client SDK Packages:** Published `@aura-flags/client` (vanilla TS/JS) and `@aura-flags/react` (`AuraProvider`, `useFeatureFlag`, `<FeatureGate>`).
   7. **Testing Demo App:** Upgraded `testing-website/` with real-time SSE stream status and dynamic Persona context switcher.
 
+### Phase 8: GitHub Bot & CI/CD Automation ✅
+* **Objective:** Automate PR flag reviews, auto-graduate canary rollouts on merge, and eliminate technical debt via stale flag scanning.
+* **Implementation:**
+  1. **Automated PR Commenting Bot:**
+     - Created [`GithubBotService.java`](file:///Users/sahilgavankar/Desktop/MEGA/server/src/main/java/com/aura/service/GithubBotService.java) scanning PR diffs and branches for flag keys (`aura.isEnabled`, `useFeatureFlag`, `<FeatureGate>`).
+     - Formats clean Markdown comment report with environment states, rollout badges, and targeting rules.
+     - Automatically creates or updates PR comments without spam (`<!-- aura:pr-report -->`).
+     - Webhook handler in [`GithubAppWebhookController.java`](file:///Users/sahilgavankar/Desktop/MEGA/server/src/main/java/com/aura/controller/GithubAppWebhookController.java) triggers on `opened`, `synchronize`, `reopened`.
+  2. **Auto-Graduate Rollout on PR Merge:**
+     - When PR merges into target branch (e.g. `main` or `staging`), associated canary flags are graduated to `100% Active`.
+     - Automatically emits `FlagStateChangedEvent`, broadcasting real-time SSE updates to all connected clients in `<15ms`.
+     - Logs audit record `FEATURE_AUTO_GRADUATED_ON_MERGE` and posts GitHub PR graduation comment.
+     - Added simulation endpoint `POST /api/projects/{projectId}/github/pulls/{prNumber}/simulate-merge` for test verification.
+  3. **Stale Flag Code Scanner & Tech Debt Manager:**
+     - Added `archived_at` column to `features` table in Neon PostgreSQL.
+     - Created [`StaleFlagService.java`](file:///Users/sahilgavankar/Desktop/MEGA/server/src/main/java/com/aura/service/StaleFlagService.java) computing Tech Debt Score (0 - 100) and classifying flags (`READY_FOR_RETIREMENT`, `DORMANT_INACTIVE`, `IN_ROLLOUT`, `HEALTHY_ACTIVE`).
+     - Created **Tech Debt & Stale Flag Scanner** page ([`StaleFlags.tsx`](file:///Users/sahilgavankar/Desktop/MEGA/client/src/pages/StaleFlags.tsx)) with interactive filtering, 1-click archiving, and refactoring PR diff generation.
+     - Added 5 automated unit and integration tests in [`GithubBotAndStaleFlagTest.java`](file:///Users/sahilgavankar/Desktop/MEGA/server/src/test/java/com/aura/GithubBotAndStaleFlagTest.java) with 100% pass rate.
+
 ---
 
 ## 3. Current System Capabilities Inventory
@@ -135,6 +154,11 @@ timeline
 | Real-Time SSE Stream Push | `GET /api/v1/stream` | Client SDK (`EventSource`) | ✅ Production Live |
 | Flag Targeting & Rollouts | `PUT /projects/{id}/flags/{env}/{key}/targeting` | `/projects/:id` (Modal) | ✅ Production Live |
 | React Integration Library | `@aura-flags/react` | Hooks & `<FeatureGate>` | ✅ Production Live |
+| Automated PR Bot Scanner | `POST /projects/{id}/github/pulls/{num}/scan` | `/projects/:id/github` | ✅ Production Live |
+| PR Merge Auto-Graduation | `POST /projects/{id}/github/pulls/{num}/simulate-merge` | Automatic CI/CD Webhook | ✅ Production Live |
+| Stale Flag Tech Debt Scan | `GET /api/projects/{id}/stale-flags` | `/projects/:id/stale-flags` | ✅ Production Live |
+| Automated Cleanup PR Generator | `POST /projects/{id}/flags/{key}/cleanup-pr` | Refactor Diff Modal | ✅ Production Live |
+| Flag Retirement & Archiving | `POST /projects/{id}/flags/{key}/archive` | `/projects/:id/stale-flags` | ✅ Production Live |
 
 ---
 
@@ -144,25 +168,18 @@ The next horizons focus on making Aura enterprise-grade, real-time, and deeply i
 
 ```mermaid
 flowchart TD
-    subgraph NearTerm["Phase 7: Advanced Targeting & Real-time (Next Up)"]
-        P7A["User Segmentation & Rollout Percentages"]
-        P7B["Server-Sent Events (SSE) Instant Flag Push"]
-        P7C["Next.js & React Official SDK Packages"]
+    subgraph NearTerm["Phase 7 & 8: Advanced Targeting, SSE & CI/CD (Completed)"]
+        P7["Canary Rollouts, Targeting & Real-time SSE Push ✅"]
+        P8["PR Comment Bot, Auto-Graduation & Stale Flag Scanner ✅"]
     end
 
-    subgraph MidTerm["Phase 8: GitHub Bot & CI/CD Automation"]
-        P8A["PR Bot Comments on Flag Changes"]
-        P8B["Auto-Graduate Rollout on PR Merge"]
-        P8C["Stale Flag Code Cleanup Scanner"]
-    end
-
-    subgraph LongTerm["Phase 9: AI & Enterprise Governance"]
-        P9A["Aura MCP Server for Cursor/Antigravity"]
-        P9B["Four-Eyes Approval Workflow for Prod"]
+    subgraph LongTerm["Phase 9: AI & Enterprise Governance (Next Up)"]
+        P9A["Aura MCP Server for Cursor & Antigravity"]
+        P9B["Four-Eyes Approval Workflow for Production"]
         P9C["Outbound Webhooks (Slack/Discord/Datadog)"]
     end
 
-    NearTerm --> MidTerm --> LongTerm
+    NearTerm --> LongTerm
 ```
 
 ---

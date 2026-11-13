@@ -634,10 +634,30 @@ export function useProjectMembers(projectId: string | undefined) {
 export function useInviteMember(projectId: string) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (data: { name: string; email: string; role: 'ADMIN' | 'EDITOR' | 'VIEWER' }) =>
+    mutationFn: (data: {
+      name: string;
+      email: string;
+      role: 'ADMIN' | 'EDITOR' | 'VIEWER';
+      activateImmediately?: boolean;
+      tempPassword?: string;
+    }) =>
       apiFetch<ProjectMember>(`/projects/${projectId}/members`, {
         method: 'POST',
         body: JSON.stringify(data),
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['project-members', projectId] });
+      queryClient.invalidateQueries({ queryKey: ['audit-logs', projectId] });
+    },
+  });
+}
+
+export function useActivateMember(projectId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (memberId: string) =>
+      apiFetch<ProjectMember>(`/projects/${projectId}/members/${memberId}/activate`, {
+        method: 'POST',
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['project-members', projectId] });

@@ -20,6 +20,7 @@ import ProjectGithub from '@/pages/ProjectGithub';
 import ProjectList from '@/pages/ProjectList';
 import ProjectSettings from '@/pages/ProjectSettings';
 import Register from '@/pages/Register';
+import AcceptInvite from '@/pages/AcceptInvite';
 import StaleFlags from '@/pages/StaleFlags';
 import Team from '@/pages/Team';
 import Templates from '@/pages/Templates';
@@ -85,6 +86,7 @@ export default function App() {
                     </GuestRoute>
                   }
                 />
+                <Route path="/invite" element={<AcceptInvite />} />
 
                 <Route
                   element={

@@ -12,6 +12,7 @@ import com.aura.repository.ProjectRepository;
 import com.aura.repository.UserRepository;
 import com.aura.security.UserPrincipal;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,16 +25,19 @@ public class ProjectMemberService {
     private final ProjectRepository projectRepository;
     private final UserRepository userRepository;
     private final AuditLogService auditLogService;
+    private final PasswordEncoder passwordEncoder;
 
     public ProjectMemberService(
             ProjectMemberRepository projectMemberRepository,
             ProjectRepository projectRepository,
             UserRepository userRepository,
-            AuditLogService auditLogService) {
+            AuditLogService auditLogService,
+            PasswordEncoder passwordEncoder) {
         this.projectMemberRepository = projectMemberRepository;
         this.projectRepository = projectRepository;
         this.userRepository = userRepository;
         this.auditLogService = auditLogService;
+        this.passwordEncoder = passwordEncoder;
     }
 
     @Transactional
@@ -85,14 +89,34 @@ public class ProjectMemberService {
 
         Optional<User> existingUser = userRepository.findByEmail(email);
         String token = UUID.randomUUID().toString();
+        String generatedPassword = null;
+        User memberUser = existingUser.orElse(null);
+        String status = existingUser.isPresent() ? "ACTIVE" : "PENDING_INVITE";
+
+        if (Boolean.TRUE.equals(request.getActivateImmediately())) {
+            if (memberUser == null) {
+                generatedPassword = request.getTempPassword() != null && !request.getTempPassword().isBlank()
+                        ? request.getTempPassword().trim()
+                        : "AuraWelcome123!";
+                User newUser = User.builder()
+                        .email(email)
+                        .name(request.getName().trim())
+                        .password(passwordEncoder.encode(generatedPassword))
+                        .role("ADMIN")
+                        .build();
+                memberUser = userRepository.save(newUser);
+            }
+            status = "ACTIVE";
+            token = null;
+        }
 
         ProjectMember member = ProjectMember.builder()
                 .project(project)
-                .user(existingUser.orElse(null))
+                .user(memberUser)
                 .name(request.getName().trim())
                 .email(email)
                 .role(role)
-                .status(existingUser.isPresent() ? "ACTIVE" : "PENDING_INVITE")
+                .status(status)
                 .inviteToken(token)
                 .build();
 
@@ -108,7 +132,51 @@ public class ProjectMemberService {
                 Map.of("email", email, "role", role, "status", member.getStatus())
         );
 
-        return toDto(member);
+        return toDto(member, generatedPassword);
+    }
+
+    @Transactional
+    public ProjectMemberDto activateMember(UUID projectId, UUID memberId, UserPrincipal principal) {
+        Project project = projectRepository.findByIdAndArchivedAtIsNull(projectId)
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Project not found"));
+
+        ProjectMember member = projectMemberRepository.findByIdAndProjectId(memberId, projectId)
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Member not found in this project"));
+
+        String generatedPassword = null;
+        if (member.getUser() == null) {
+            String email = member.getEmail().trim().toLowerCase();
+            Optional<User> existingUser = userRepository.findByEmail(email);
+            if (existingUser.isPresent()) {
+                member.setUser(existingUser.get());
+            } else {
+                generatedPassword = "AuraWelcome123!";
+                User newUser = User.builder()
+                        .email(email)
+                        .name(member.getName() != null && !member.getName().isBlank() ? member.getName() : email.split("@")[0])
+                        .password(passwordEncoder.encode(generatedPassword))
+                        .role("ADMIN")
+                        .build();
+                newUser = userRepository.save(newUser);
+                member.setUser(newUser);
+            }
+        }
+
+        member.setStatus("ACTIVE");
+        member.setInviteToken(null);
+        member = projectMemberRepository.save(member);
+
+        User actor = userRepository.findById(principal.getId()).orElse(null);
+        auditLogService.logAction(
+                project,
+                actor,
+                "PROJECT_MEMBER_ACTIVATED",
+                "ProjectMember",
+                member.getId().toString(),
+                Map.of("email", member.getEmail(), "role", member.getRole(), "status", "ACTIVE")
+        );
+
+        return toDto(member, generatedPassword);
     }
 
     @Transactional
@@ -179,6 +247,10 @@ public class ProjectMemberService {
     }
 
     private ProjectMemberDto toDto(ProjectMember member) {
+        return toDto(member, null);
+    }
+
+    private ProjectMemberDto toDto(ProjectMember member, String tempPassword) {
         return ProjectMemberDto.builder()
                 .id(member.getId())
                 .projectId(member.getProject().getId())
@@ -188,6 +260,7 @@ public class ProjectMemberService {
                 .role(member.getRole())
                 .status(member.getStatus())
                 .inviteToken(member.getInviteToken())
+                .tempPassword(tempPassword)
                 .createdAt(member.getCreatedAt())
                 .updatedAt(member.getUpdatedAt())
                 .build();

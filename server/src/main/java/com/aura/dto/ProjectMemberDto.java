@@ -21,6 +21,7 @@ public class ProjectMemberDto {
     private String role; // ADMIN, EDITOR, VIEWER
     private String status; // ACTIVE, PENDING_INVITE
     private String inviteToken;
+    private String tempPassword;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }

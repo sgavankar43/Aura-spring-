@@ -48,6 +48,14 @@ public class ProjectMemberController {
         return ResponseEntity.ok(projectMemberService.updateRole(projectId, memberId, request, principal));
     }
 
+    @PostMapping("/{memberId}/activate")
+    public ResponseEntity<ProjectMemberDto> activateMember(
+            @PathVariable UUID projectId,
+            @PathVariable UUID memberId,
+            @AuthenticationPrincipal UserPrincipal principal) {
+        return ResponseEntity.ok(projectMemberService.activateMember(projectId, memberId, principal));
+    }
+
     @DeleteMapping("/{memberId}")
     public ResponseEntity<Map<String, String>> removeMember(
             @PathVariable UUID projectId,

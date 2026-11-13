@@ -152,6 +152,7 @@ export interface ProjectMember {
   role: 'ADMIN' | 'EDITOR' | 'VIEWER';
   status: 'ACTIVE' | 'PENDING_INVITE';
   inviteToken?: string | null;
+  tempPassword?: string | null;
   createdAt: string;
   updatedAt?: string;
 }

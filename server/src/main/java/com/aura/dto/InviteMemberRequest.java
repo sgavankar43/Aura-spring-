@@ -22,4 +22,14 @@ public class InviteMemberRequest {
 
     @NotBlank(message = "Role is required (ADMIN, EDITOR, VIEWER)")
     private String role;
+
+    private Boolean activateImmediately;
+
+    private String tempPassword;
+
+    public InviteMemberRequest(String name, String email, String role) {
+        this.name = name;
+        this.email = email;
+        this.role = role;
+    }
 }

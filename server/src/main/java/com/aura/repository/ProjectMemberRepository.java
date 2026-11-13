@@ -13,6 +13,8 @@ public interface ProjectMemberRepository extends JpaRepository<ProjectMember, UU
 
     List<ProjectMember> findByProjectIdOrderByCreatedAtAsc(UUID projectId);
 
+    List<ProjectMember> findByEmail(String email);
+
     Optional<ProjectMember> findByProjectIdAndEmail(UUID projectId, String email);
 
     Optional<ProjectMember> findByIdAndProjectId(UUID id, UUID projectId);

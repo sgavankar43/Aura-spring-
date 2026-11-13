@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import {
   Check,
+  CheckCircle2,
   Copy,
   Mail,
   MoreVertical,
@@ -14,6 +15,7 @@ import {
   UserCheck,
   UserPlus,
   Users,
+  Zap,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
@@ -22,12 +24,13 @@ import { Label } from '@/components/ui/Label';
 import { Modal } from '@/components/ui/Modal';
 import { useAuth } from '@/contexts/AuthContext';
 import {
+  useActivateMember,
   useInviteMember,
   useProjectMembers,
   useRemoveMember,
   useUpdateMemberRole,
 } from '@/hooks/queries';
-import type { Project } from '@/types/domain';
+import type { Project, ProjectMember } from '@/types/domain';
 
 type MemberRole = 'ADMIN' | 'EDITOR' | 'VIEWER';
 
@@ -55,6 +58,7 @@ export default function Team() {
 
   const { data: members = [], isLoading } = useProjectMembers(project.id);
   const inviteMutation = useInviteMember(project.id);
+  const activateMutation = useActivateMember(project.id);
   const updateRoleMutation = useUpdateMemberRole(project.id);
   const removeMemberMutation = useRemoveMember(project.id);
 
@@ -63,10 +67,20 @@ export default function Team() {
   const [inviteName, setInviteName] = useState('');
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteRole, setInviteRole] = useState<MemberRole>('EDITOR');
+  const [activateImmediately, setActivateImmediately] = useState(false);
+  const [tempPassword, setTempPassword] = useState('AuraWelcome123!');
   const [inviteSuccess, setInviteSuccess] = useState(false);
   const [inviteError, setInviteError] = useState<string | null>(null);
   const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
   const [copiedToken, setCopiedToken] = useState<string | null>(null);
+  const [activatingId, setActivatingId] = useState<string | null>(null);
+  const [credentialsModal, setCredentialsModal] = useState<{
+    name: string;
+    email: string;
+    role: string;
+    tempPassword?: string;
+  } | null>(null);
+  const [copiedPassword, setCopiedPassword] = useState(false);
 
   const filteredMembers = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -89,21 +103,60 @@ export default function Team() {
 
     setInviteError(null);
     try {
-      await inviteMutation.mutateAsync({
+      const res = await inviteMutation.mutateAsync({
         name: inviteName.trim(),
         email: inviteEmail.trim().toLowerCase(),
         role: inviteRole,
+        activateImmediately,
+        tempPassword: activateImmediately ? tempPassword.trim() : undefined,
       });
+
+      const memberName = inviteName.trim();
+      const memberEmail = inviteEmail.trim().toLowerCase();
+      const memberRole = inviteRole;
+
       setInviteName('');
       setInviteEmail('');
       setInviteRole('EDITOR');
-      setInviteSuccess(true);
-      setTimeout(() => {
-        setInviteSuccess(false);
+      setActivateImmediately(false);
+      setTempPassword('AuraWelcome123!');
+
+      if (res.tempPassword) {
         setIsInviteOpen(false);
-      }, 1200);
+        setCredentialsModal({
+          name: memberName,
+          email: memberEmail,
+          role: memberRole,
+          tempPassword: res.tempPassword,
+        });
+      } else {
+        setInviteSuccess(true);
+        setTimeout(() => {
+          setInviteSuccess(false);
+          setIsInviteOpen(false);
+        }, 1200);
+      }
     } catch (err: any) {
       setInviteError(err?.message || 'Failed to invite team member');
+    }
+  };
+
+  const handleActivateNow = async (member: ProjectMember) => {
+    setActivatingId(member.id);
+    try {
+      const res = await activateMutation.mutateAsync(member.id);
+      if (res.tempPassword) {
+        setCredentialsModal({
+          name: member.name,
+          email: member.email,
+          role: member.role,
+          tempPassword: res.tempPassword,
+        });
+      }
+    } catch (err: any) {
+      alert(err?.message || 'Failed to activate member');
+    } finally {
+      setActivatingId(null);
     }
   };
 
@@ -249,26 +302,43 @@ export default function Team() {
                   </div>
                 </div>
 
-                <div className="flex items-center gap-3">
-                  {member.status === 'PENDING_INVITE' && member.inviteToken && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="h-7 text-xs gap-1 font-mono"
-                      onClick={() => handleCopyInvite(member.inviteToken!)}
-                    >
-                      {copiedToken === member.inviteToken ? (
-                        <>
-                          <Check className="h-3 w-3 text-emerald-500" />
-                          <span>Copied</span>
-                        </>
-                      ) : (
-                        <>
-                          <Copy className="h-3 w-3 text-muted-foreground" />
-                          <span>Copy link</span>
-                        </>
+                <div className="flex items-center gap-2">
+                  {member.status === 'PENDING_INVITE' && (
+                    <>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-7 text-xs gap-1 font-mono text-amber-600 dark:text-amber-400 border-amber-500/30 hover:bg-amber-500/10"
+                        disabled={activatingId === member.id}
+                        onClick={() => handleActivateNow(member)}
+                        title="Immediately provision credentials and activate this user account"
+                      >
+                        <Zap className="h-3 w-3 fill-amber-500 text-amber-500" />
+                        <span>{activatingId === member.id ? 'Activating…' : 'Activate Now'}</span>
+                      </Button>
+
+                      {member.inviteToken && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-7 text-xs gap-1 font-mono"
+                          onClick={() => handleCopyInvite(member.inviteToken!)}
+                          title="Copy shareable self-service invite link"
+                        >
+                          {copiedToken === member.inviteToken ? (
+                            <>
+                              <Check className="h-3 w-3 text-emerald-500" />
+                              <span>Copied</span>
+                            </>
+                          ) : (
+                            <>
+                              <Copy className="h-3 w-3 text-muted-foreground" />
+                              <span>Copy link</span>
+                            </>
+                          )}
+                        </Button>
                       )}
-                    </Button>
+                    </>
                   )}
 
                   <span
@@ -427,16 +497,132 @@ export default function Team() {
                 <option value="VIEWER">Viewer — Read-only access</option>
               </select>
             </div>
+
+            {/* Instant Account Provisioning */}
+            <div className="rounded-lg border border-border bg-paper-2 p-3 space-y-2">
+              <label className="flex items-start gap-2.5 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={activateImmediately}
+                  onChange={(e) => setActivateImmediately(e.target.checked)}
+                  className="mt-0.5 rounded border-border text-primary focus:ring-primary"
+                />
+                <div>
+                  <p className="text-xs font-medium text-foreground flex items-center gap-1.5">
+                    <Zap className="h-3 w-3 text-amber-500 fill-amber-500" />
+                    Activate account immediately
+                  </p>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">
+                    Generates user login credentials right away without waiting for self-service invite link acceptance.
+                  </p>
+                </div>
+              </label>
+              {activateImmediately && (
+                <div className="pt-2 border-t border-border space-y-1">
+                  <Label htmlFor="temp-password" className="text-[11px]">Temporary Password</Label>
+                  <Input
+                    id="temp-password"
+                    type="text"
+                    value={tempPassword}
+                    onChange={(e) => setTempPassword(e.target.value)}
+                    className="font-mono text-xs"
+                    required
+                  />
+                </div>
+              )}
+            </div>
+
             <div className="flex justify-end gap-2 pt-2">
               <Button type="button" variant="ghost" onClick={() => setIsInviteOpen(false)}>
                 Cancel
               </Button>
               <Button type="submit" className="gap-1.5">
                 <Plus className="h-3.5 w-3.5" />
-                Send invite
+                {activateImmediately ? 'Provision & Add' : 'Send invite'}
               </Button>
             </div>
           </form>
+        )}
+      </Modal>
+
+      {/* Credentials / Instant Activation Notification Modal */}
+      <Modal
+        open={credentialsModal !== null}
+        onClose={() => {
+          setCredentialsModal(null);
+          setCopiedPassword(false);
+        }}
+        title="Account Provisioned & Ready"
+      >
+        {credentialsModal && (
+          <div className="space-y-4">
+            <div className="flex items-center gap-2 text-xs font-medium text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 rounded-md p-2.5">
+              <CheckCircle2 className="h-4 w-4 shrink-0" />
+              <span>User account is active! Share these credentials with the team member.</span>
+            </div>
+
+            <div className="rounded-lg border border-border bg-paper-2 p-3.5 space-y-2.5 text-xs">
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">Member:</span>
+                <span className="font-semibold text-foreground">{credentialsModal.name}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">Login Email:</span>
+                <span className="font-mono font-medium text-foreground">{credentialsModal.email}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">Project Role:</span>
+                <span className="font-mono text-primary font-semibold">{credentialsModal.role}</span>
+              </div>
+              <div className="pt-2 border-t border-border flex items-center justify-between">
+                <span className="text-muted-foreground">Temporary Password:</span>
+                <div className="flex items-center gap-2">
+                  <code className="bg-background px-2 py-1 rounded border border-border font-mono text-xs text-foreground font-semibold">
+                    {credentialsModal.tempPassword}
+                  </code>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-7 text-xs gap-1 font-mono"
+                    onClick={() => {
+                      navigator.clipboard.writeText(credentialsModal.tempPassword || '');
+                      setCopiedPassword(true);
+                      setTimeout(() => setCopiedPassword(false), 2000);
+                    }}
+                  >
+                    {copiedPassword ? (
+                      <>
+                        <Check className="h-3 w-3 text-emerald-500" />
+                        <span>Copied</span>
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="h-3 w-3 text-muted-foreground" />
+                        <span>Copy</span>
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </div>
+            </div>
+
+            <div className="text-[11px] text-muted-foreground bg-paper rounded-md p-2.5 border border-border">
+              💡 The user can now visit the Aura login page (<code>/login</code>) and enter their email and temporary password to access the project immediately.
+            </div>
+
+            <div className="flex justify-end pt-2">
+              <Button
+                type="button"
+                onClick={() => {
+                  setCredentialsModal(null);
+                  setCopiedPassword(false);
+                }}
+              >
+                Done
+              </Button>
+            </div>
+          </div>
         )}
       </Modal>
     </div>

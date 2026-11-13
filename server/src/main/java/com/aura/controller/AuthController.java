@@ -1,9 +1,6 @@
 package com.aura.controller;
 
-import com.aura.dto.AuthResponse;
-import com.aura.dto.LoginRequest;
-import com.aura.dto.RegisterRequest;
-import com.aura.dto.UserDto;
+import com.aura.dto.*;
 import com.aura.security.UserPrincipal;
 import com.aura.service.AuthService;
 import jakarta.validation.Valid;
@@ -31,6 +28,16 @@ public class AuthController {
     @PostMapping("/login")
     public ResponseEntity<AuthResponse> login(@Valid @RequestBody LoginRequest request) {
         return ResponseEntity.ok(authService.login(request));
+    }
+
+    @GetMapping("/invite/{token}")
+    public ResponseEntity<InviteInfoDto> getInviteInfo(@PathVariable String token) {
+        return ResponseEntity.ok(authService.getInviteInfo(token));
+    }
+
+    @PostMapping("/invite/accept")
+    public ResponseEntity<AuthResponse> acceptInvite(@Valid @RequestBody AcceptInviteRequest request) {
+        return ResponseEntity.ok(authService.acceptInvite(request));
     }
 
     @GetMapping("/me")

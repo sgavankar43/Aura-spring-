@@ -47,6 +47,9 @@ public class TeamAndWebhookDeliveryTest {
     @Autowired
     private UserRepository userRepository;
 
+    @Autowired
+    private com.aura.service.AuthService authService;
+
     private Project testProject;
     private User testUser;
     private UserPrincipal testPrincipal;
@@ -185,5 +188,47 @@ public class TeamAndWebhookDeliveryTest {
 
         List<WebhookDeliveryDto> updatedDeliveries = webhookService.getDeliveries(testProject.getId(), webhook.getId());
         assertThat(updatedDeliveries.size()).isGreaterThanOrEqualTo(2);
+    }
+
+    @Test
+    @DisplayName("Should activate pending member immediately or accept self-service invite")
+    void testInstantActivationAndInviteAcceptanceFlow() {
+        String uniqueEmail1 = "instant-" + UUID.randomUUID().toString().substring(0, 8) + "@company.com";
+        String uniqueEmail2 = "invitee-" + UUID.randomUUID().toString().substring(0, 8) + "@company.com";
+
+        // 1. Admin invites with immediate provisioning
+        InviteMemberRequest req1 = InviteMemberRequest.builder()
+                .name("Instant User")
+                .email(uniqueEmail1)
+                .role("EDITOR")
+                .activateImmediately(true)
+                .tempPassword("CustomSecret999!")
+                .build();
+
+        ProjectMemberDto instantMember = projectMemberService.inviteMember(testProject.getId(), req1, testPrincipal);
+        assertThat(instantMember.getStatus()).isEqualTo("ACTIVE");
+        assertThat(instantMember.getUserId()).isNotNull();
+        assertThat(instantMember.getTempPassword()).isEqualTo("CustomSecret999!");
+
+        // User can immediately login with tempPassword
+        AuthResponse loginResp = authService.login(new LoginRequest(uniqueEmail1, "CustomSecret999!"));
+        assertThat(loginResp.getToken()).isNotBlank();
+        assertThat(loginResp.getUser().getEmail()).isEqualTo(uniqueEmail1);
+
+        // 2. Standard invite creates PENDING_INVITE with token
+        InviteMemberRequest req2 = new InviteMemberRequest("Invited User", uniqueEmail2, "VIEWER");
+        ProjectMemberDto pendingMember = projectMemberService.inviteMember(testProject.getId(), req2, testPrincipal);
+        assertThat(pendingMember.getStatus()).isEqualTo("PENDING_INVITE");
+        assertThat(pendingMember.getInviteToken()).isNotNull();
+
+        // 3. Admin can 1-click activate the pending invite
+        ProjectMemberDto activatedMember = projectMemberService.activateMember(testProject.getId(), pendingMember.getId(), testPrincipal);
+        assertThat(activatedMember.getStatus()).isEqualTo("ACTIVE");
+        assertThat(activatedMember.getUserId()).isNotNull();
+        assertThat(activatedMember.getTempPassword()).isEqualTo("AuraWelcome123!");
+
+        // The activated member can now log in
+        AuthResponse loginResp2 = authService.login(new LoginRequest(uniqueEmail2, "AuraWelcome123!"));
+        assertThat(loginResp2.getToken()).isNotBlank();
     }
 }

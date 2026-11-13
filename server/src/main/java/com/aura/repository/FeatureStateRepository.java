@@ -2,6 +2,9 @@ package com.aura.repository;
 
 import com.aura.entity.FeatureState;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -13,4 +16,8 @@ public interface FeatureStateRepository extends JpaRepository<FeatureState, UUID
     Optional<FeatureState> findByFeatureIdAndEnvironmentId(UUID featureId, UUID environmentId);
     List<FeatureState> findByFeatureId(UUID featureId);
     List<FeatureState> findByEnvironmentId(UUID environmentId);
+
+    @Modifying
+    @Query("DELETE FROM FeatureState fs WHERE fs.feature.id = :featureId")
+    void deleteByFeatureId(@Param("featureId") UUID featureId);
 }

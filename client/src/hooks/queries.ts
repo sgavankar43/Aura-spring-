@@ -124,6 +124,22 @@ export function useCreateFeature(projectId: string) {
   });
 }
 
+export function useDeleteFeature(projectId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (key: string) =>
+      apiFetch<{ message: string; key: string }>(`/projects/${projectId}/features/${key}`, {
+        method: 'DELETE',
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['features', projectId] });
+      queryClient.invalidateQueries({ queryKey: ['stale-flags', projectId] });
+      queryClient.invalidateQueries({ queryKey: ['audit-logs', projectId] });
+      queryClient.invalidateQueries({ queryKey: ['project', projectId] });
+    },
+  });
+}
+
 export function useCreateEnvironment(projectId: string) {
   const queryClient = useQueryClient();
   return useMutation({

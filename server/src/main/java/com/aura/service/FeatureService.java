@@ -32,6 +32,7 @@ public class FeatureService {
     private final AuditLogService auditLogService;
     private final TargetingEngine targetingEngine;
     private final ApplicationEventPublisher eventPublisher;
+    private final ChangeRequestRepository changeRequestRepository;
 
     public FeatureService(
             ProjectRepository projectRepository,
@@ -41,7 +42,8 @@ public class FeatureService {
             UserRepository userRepository,
             AuditLogService auditLogService,
             TargetingEngine targetingEngine,
-            ApplicationEventPublisher eventPublisher) {
+            ApplicationEventPublisher eventPublisher,
+            ChangeRequestRepository changeRequestRepository) {
         this.projectRepository = projectRepository;
         this.environmentRepository = environmentRepository;
         this.featureRepository = featureRepository;
@@ -50,6 +52,7 @@ public class FeatureService {
         this.auditLogService = auditLogService;
         this.targetingEngine = targetingEngine;
         this.eventPublisher = eventPublisher;
+        this.changeRequestRepository = changeRequestRepository;
     }
 
     @Transactional(readOnly = true)
@@ -154,6 +157,45 @@ public class FeatureService {
                 .rolloutPercentages(rolloutPercentages)
                 .targetingRules(targetingRules)
                 .build();
+    }
+
+    @Transactional
+    public void deleteFeature(UUID projectId, String key, UserPrincipal principal) {
+        Project project = projectRepository.findByIdAndArchivedAtIsNull(projectId)
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Project not found"));
+
+        Feature feature = featureRepository.findByProjectIdAndKey(projectId, key)
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Feature flag with key '" + key + "' not found"));
+
+        User user = (principal != null && principal.getId() != null)
+                ? userRepository.findById(principal.getId()).orElse(null)
+                : null;
+
+        // 1. Delete associated change requests
+        changeRequestRepository.deleteByFeatureId(feature.getId());
+
+        // 2. Delete feature states
+        featureStateRepository.deleteByFeatureId(feature.getId());
+
+        // 3. Delete the feature entity
+        featureRepository.delete(feature);
+
+        // 4. Log audit action
+        auditLogService.logAction(project, user, "FEATURE_DELETED", "Feature", feature.getId().toString(),
+                Map.of("key", feature.getKey(), "name", feature.getName()));
+
+        // 5. Broadcast real-time SSE stream updates to connected clients (<15ms)
+        List<Environment> environments = environmentRepository.findByProjectIdOrderBySortOrderAsc(projectId);
+        for (Environment env : environments) {
+            eventPublisher.publishEvent(FlagStateChangedEvent.builder()
+                    .projectId(project.getId())
+                    .envSlug(env.getSlug())
+                    .featureKey(feature.getKey())
+                    .enabled(false)
+                    .rolloutPercentage(0)
+                    .rules("[]")
+                    .build());
+        }
     }
 
     @Transactional

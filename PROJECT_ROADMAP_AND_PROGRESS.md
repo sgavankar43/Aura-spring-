@@ -174,7 +174,7 @@ timeline
 |---|---|---|---|
 | User Authentication | `POST /api/auth/login`, `POST /api/auth/register` | `/login`, `/register` | ✅ Production Live |
 | Multi-Project Isolation | `GET /api/projects`, `POST /api/projects` | `/projects` | ✅ Production Live |
-| Feature Flag CRUD | `GET /projects/{id}/features`, `POST ...` | `/projects/:id` | ✅ Production Live |
+| Feature Flag CRUD & Delete | `GET`, `POST`, `DELETE /projects/{id}/features/{key}` | `/projects/:id` (Grid & Modal) | ✅ Production Live |
 | Multi-Environment Toggles | `PATCH /projects/{id}/flags/{env}/{key}` | `/projects/:id` (Grid) | ✅ Production Live |
 | Environment Management | `POST /projects/{id}/environments` | `/projects/:id/environments` | ✅ Production Live |
 | Project Overview & Stats | Reuses core telemetry queries | `/projects/:id/overview` | ✅ Production Live |

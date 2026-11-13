@@ -64,4 +64,17 @@ public class FeatureController {
         featureService.updateFlagTargeting(projectId, envSlug, key, request, principal);
         return ResponseEntity.ok(Map.of("status", "ok"));
     }
+
+    @DeleteMapping("/features/{key}")
+    public ResponseEntity<Map<String, String>> deleteFeature(
+            @PathVariable UUID projectId,
+            @PathVariable String key,
+            @AuthenticationPrincipal UserPrincipal principal
+    ) {
+        featureService.deleteFeature(projectId, key, principal);
+        return ResponseEntity.ok(Map.of(
+                "message", "Feature flag deleted successfully",
+                "key", key
+        ));
+    }
 }

@@ -127,6 +127,18 @@ public class McpServerService {
                                 ),
                                 "required", List.of("apiKey", "flagKey")
                         )
+                ),
+                Map.of(
+                        "name", "delete_flag",
+                        "description", "Permanently delete a feature flag and its environment states from Aura.",
+                        "inputSchema", Map.of(
+                                "type", "object",
+                                "properties", Map.of(
+                                        "apiKey", Map.of("type", "string", "description", "Aura Project API Key"),
+                                        "flagKey", Map.of("type", "string", "description", "Flag key to delete")
+                                ),
+                                "required", List.of("apiKey", "flagKey")
+                        )
                 )
         );
     }
@@ -211,6 +223,12 @@ public class McpServerService {
                 String flagKey = (String) args.get("flagKey");
                 FlagCleanupPrResponse resp = staleFlagService.generateCleanupPr(project.getId(), flagKey, false, null);
                 return Map.of("cleanupPr", resp);
+            }
+
+            case "delete_flag": {
+                String flagKey = (String) args.get("flagKey");
+                featureService.deleteFeature(project.getId(), flagKey, null);
+                return Map.of("message", "Feature flag deleted successfully", "flagKey", flagKey);
             }
 
             default:

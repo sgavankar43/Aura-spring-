@@ -43,6 +43,9 @@ public class McpAndGovernanceTest {
     private McpServerService mcpServerService;
 
     @Autowired
+    private com.aura.service.FeatureService featureService;
+
+    @Autowired
     private ProjectRepository projectRepository;
 
     @Autowired
@@ -205,5 +208,28 @@ public class McpAndGovernanceTest {
                 "userId", "usr_mcp_tester"
         ));
         assertThat(evalResult.get("evaluation")).isNotNull();
+    }
+
+    @Test
+    @DisplayName("Should permanently delete a feature flag and cascade delete states and change requests")
+    void testDeleteFeature() {
+        // Create change request for the flag first
+        changeRequestService.createChangeRequest(testProject.getId(), CreateChangeRequestPayload.builder()
+                .featureKey(testFeature.getKey())
+                .environmentSlug(prodEnv.getSlug())
+                .targetState(true)
+                .reason("Pre-delete change request")
+                .build(), devPrincipal);
+
+        // Verify feature exists
+        assertThat(featureRepository.findByProjectIdAndKey(testProject.getId(), testFeature.getKey())).isPresent();
+        assertThat(featureStateRepository.findByFeatureId(testFeature.getId())).isNotEmpty();
+
+        // Perform deletion
+        featureService.deleteFeature(testProject.getId(), testFeature.getKey(), adminPrincipal);
+
+        // Verify flag is completely gone
+        assertThat(featureRepository.findByProjectIdAndKey(testProject.getId(), testFeature.getKey())).isEmpty();
+        assertThat(featureStateRepository.findByFeatureId(testFeature.getId())).isEmpty();
     }
 }

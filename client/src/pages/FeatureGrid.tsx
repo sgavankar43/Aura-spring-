@@ -18,6 +18,7 @@ import { Label } from '@/components/ui/Label';
 import { Modal } from '@/components/ui/Modal';
 import {
   useCreateFeature,
+  useDeleteFeature,
   useFeatures,
   useGithubBranches,
   useGithubStatus,
@@ -34,7 +35,10 @@ export default function FeatureGrid() {
   const toggleFlag = useToggleFlag(project.id);
   const updateTargeting = useUpdateFlagTargeting(project.id);
   const createFeature = useCreateFeature(project.id);
+  const deleteFeature = useDeleteFeature(project.id);
   const linkFeatureGithub = useLinkFeatureGithub(project.id);
+
+  const [deleteConfirmKey, setDeleteConfirmKey] = useState<string | null>(null);
 
   const { data: ghStatus } = useGithubStatus(project.id);
   const isGhConnected = Boolean(ghStatus?.connected);
@@ -259,13 +263,14 @@ export default function FeatureGrid() {
                     </span>
                   </th>
                 ))}
+                <th className="w-12 px-3 py-3 text-center"></th>
               </tr>
             </thead>
             <tbody className="divide-y">
               {features?.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={environments.length + (isGhConnected ? 2 : 1)}
+                    colSpan={environments.length + (isGhConnected ? 3 : 2)}
                     className="px-6 py-12 text-center text-muted-foreground"
                   >
                     No features yet. Create one to start rolling out safely.
@@ -381,6 +386,18 @@ export default function FeatureGrid() {
                       </td>
                     );
                   })}
+
+                  <td className="w-12 px-3 py-4 text-center">
+                    <button
+                      type="button"
+                      onClick={() => setDeleteConfirmKey(feature.key)}
+                      className="rounded p-1 text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
+                      title={`Delete flag "${feature.key}"`}
+                      data-testid={`delete-flag-${feature.key}`}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -745,6 +762,50 @@ export default function FeatureGrid() {
             </div>
           </div>
         </form>
+      </Modal>
+
+      {/* Delete Feature Confirmation Modal */}
+      <Modal
+        open={Boolean(deleteConfirmKey)}
+        onClose={() => setDeleteConfirmKey(null)}
+        title="Delete Feature Flag"
+        description="Permanently delete this flag, its environment states, and targeting rules. This action cannot be undone."
+        data-testid="delete-feature-modal"
+      >
+        <div className="space-y-4">
+          <p className="text-sm">
+            Are you sure you want to permanently delete feature flag{' '}
+            <strong className="font-mono text-destructive">{deleteConfirmKey}</strong>?
+          </p>
+          <div className="flex justify-end gap-2 pt-2 border-t border-border">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setDeleteConfirmKey(null)}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              size="sm"
+              disabled={deleteFeature.isPending}
+              onClick={async () => {
+                if (!deleteConfirmKey) return;
+                try {
+                  await deleteFeature.mutateAsync(deleteConfirmKey);
+                  setDeleteConfirmKey(null);
+                } catch (err) {
+                  alert(err instanceof Error ? err.message : 'Failed to delete feature flag');
+                }
+              }}
+              data-testid="confirm-delete-btn"
+            >
+              {deleteFeature.isPending ? 'Deleting…' : 'Delete Flag'}
+            </Button>
+          </div>
+        </div>
       </Modal>
     </div>
   );

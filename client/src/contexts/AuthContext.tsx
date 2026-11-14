@@ -39,6 +39,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     void checkAuth();
   }, [token]);
 
+  useEffect(() => {
+    const onUnauthorized = () => {
+      setToken(null);
+      setUser(null);
+    };
+    window.addEventListener('aura:unauthorized', onUnauthorized);
+    return () => window.removeEventListener('aura:unauthorized', onUnauthorized);
+  }, []);
+
   const login = (newToken: string, newUser: User) => {
     localStorage.setItem('aura_token', newToken);
     setToken(newToken);

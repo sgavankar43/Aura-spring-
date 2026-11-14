@@ -248,6 +248,9 @@ public class WebhookDispatchService {
             String jsonPayload = objectMapper.writeValueAsString(payload);
 
             for (Webhook wh : activeWebhooks) {
+                if (!subscribesToEvent(wh.getEvents(), "flag.toggle")) {
+                    continue;
+                }
                 dispatchToEndpoint(wh, jsonPayload, "flag.toggle");
             }
         } catch (Exception ex) {
@@ -403,6 +406,20 @@ public class WebhookDispatchService {
                 .attemptNumber(delivery.getAttemptNumber())
                 .createdAt(delivery.getCreatedAt())
                 .build();
+    }
+
+    private boolean subscribesToEvent(String eventsCsv, String eventType) {
+        if (eventsCsv == null || eventsCsv.isBlank()) {
+            return true;
+        }
+        String[] parts = eventsCsv.split(",");
+        for (String part : parts) {
+            String trimmed = part.trim();
+            if (trimmed.equalsIgnoreCase("*") || trimmed.equalsIgnoreCase(eventType)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private String computeHmacSha256(String data, String key) {

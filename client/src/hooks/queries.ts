@@ -616,7 +616,8 @@ export function useToggleEnvironmentApproval(projectId: string) {
         body: JSON.stringify({ requireApproval }),
       }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['projects', projectId] });
+      queryClient.invalidateQueries({ queryKey: ['project', projectId] });
+      queryClient.invalidateQueries({ queryKey: ['projects'] });
       queryClient.invalidateQueries({ queryKey: ['audit-logs', projectId] });
     },
   });

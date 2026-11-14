@@ -17,6 +17,7 @@ import { Input } from '@/components/ui/Input';
 import { Label } from '@/components/ui/Label';
 import { Modal } from '@/components/ui/Modal';
 import {
+  useCreateChangeRequest,
   useCreateFeature,
   useDeleteFeature,
   useFeatures,
@@ -26,6 +27,7 @@ import {
   useToggleFlag,
   useUpdateFlagTargeting,
 } from '@/hooks/queries';
+import { ApiError } from '@/lib/api';
 import { cn } from '@/lib/utils';
 import type { Environment, FeatureRow, Project, TargetingRule } from '@/types/domain';
 
@@ -34,6 +36,7 @@ export default function FeatureGrid() {
   const { data: features, isLoading } = useFeatures(project.id);
   const toggleFlag = useToggleFlag(project.id);
   const updateTargeting = useUpdateFlagTargeting(project.id);
+  const createChangeRequest = useCreateChangeRequest(project.id);
   const createFeature = useCreateFeature(project.id);
   const deleteFeature = useDeleteFeature(project.id);
   const linkFeatureGithub = useLinkFeatureGithub(project.id);
@@ -233,6 +236,25 @@ export default function FeatureGrid() {
         }));
 
       const rulesPayload = cleanRules.length > 0 ? JSON.stringify(cleanRules) : null;
+      const currentEnabled =
+        activeTargetingFeature.states[activeTargetingEnv.slug] ??
+        activeTargetingFeature.defaultEnabled;
+
+      if (activeTargetingEnv.requireApproval) {
+        await createChangeRequest.mutateAsync({
+          featureKey: activeTargetingFeature.key,
+          environmentSlug: activeTargetingEnv.slug,
+          targetState: Boolean(currentEnabled),
+          targetRollout: rolloutPct,
+          targetRules: rulesPayload ?? undefined,
+          reason: `Targeting/rollout change via Feature Grid (${rolloutPct}% canary)`,
+        });
+        setTargetingModalOpen(false);
+        window.alert(
+          `Change request submitted for ${activeTargetingFeature.key} in ${activeTargetingEnv.slug}. Review it under Governance.`,
+        );
+        return;
+      }
 
       await updateTargeting.mutateAsync({
         envSlug: activeTargetingEnv.slug,
@@ -384,23 +406,60 @@ export default function FeatureGrid() {
                             <button
                               type="button"
                               data-testid={`flag-toggle-${feature.key}-${env.slug}`}
-                              onClick={() =>
+                              title={
+                                env.requireApproval
+                                  ? 'Protected environment — submits a Four-Eyes change request'
+                                  : undefined
+                              }
+                              onClick={() => {
+                                const nextEnabled = !stateVal;
+                                if (env.requireApproval) {
+                                  createChangeRequest.mutate(
+                                    {
+                                      featureKey: feature.key,
+                                      environmentSlug: env.slug,
+                                      targetState: nextEnabled,
+                                      reason: `Requested via Feature Grid toggle (${nextEnabled ? 'ON' : 'OFF'})`,
+                                    },
+                                    {
+                                      onSuccess: () => {
+                                        window.alert(
+                                          `Change request submitted for ${feature.key} in ${env.slug}. Review it under Governance.`,
+                                        );
+                                      },
+                                      onError: (err) => {
+                                        const msg =
+                                          err instanceof ApiError || err instanceof Error
+                                            ? err.message
+                                            : 'Failed to submit change request';
+                                        window.alert(msg);
+                                      },
+                                    },
+                                  );
+                                  return;
+                                }
                                 toggleFlag.mutate({
                                   envSlug: env.slug,
                                   key: feature.key,
-                                  enabled: !stateVal,
-                                })
+                                  enabled: nextEnabled,
+                                });
+                              }}
+                              disabled={
+                                isToggling(env.slug, feature.key) || createChangeRequest.isPending
                               }
-                              disabled={isToggling(env.slug, feature.key)}
                               className={cn(
                                 'inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition-colors shadow-sm',
                                 stateVal
                                   ? 'border-success/30 bg-success/10 text-success hover:bg-success/20'
                                   : 'border-transparent bg-muted/60 text-muted-foreground hover:bg-muted',
+                                env.requireApproval && 'ring-1 ring-amber-500/40',
                               )}
                             >
                               <Power className={cn('h-3 w-3', !stateVal && 'opacity-50')} />
                               {stateVal ? 'On' : 'Off'}
+                              {env.requireApproval ? (
+                                <span className="text-[10px] opacity-70">CR</span>
+                              ) : null}
                             </button>
 
                             <button

@@ -12,6 +12,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -31,6 +32,9 @@ public class StaleFlagService {
 
     private static final Logger log = LoggerFactory.getLogger(StaleFlagService.class);
     private static final String GITHUB_API_BASE = "https://api.github.com";
+
+    @Value("${app.github.token:}")
+    private String systemGithubToken;
 
     private final FeatureRepository featureRepository;
     private final FeatureStateRepository featureStateRepository;
@@ -328,6 +332,8 @@ public class StaleFlagService {
 
     private String createGithubPr(GithubIntegration gh, String branch, String title, String body) {
         try {
+            String token = GithubTokenResolver.resolveToken(gh.getAccessToken(), systemGithubToken);
+
             String url = GITHUB_API_BASE + "/repos/" + gh.getRepoOwner() + "/" + gh.getRepoName() + "/pulls";
             String payload = objectMapper.writeValueAsString(Map.of(
                     "title", title,
@@ -336,15 +342,17 @@ public class StaleFlagService {
                     "body", body
             ));
 
-            HttpRequest request = HttpRequest.newBuilder()
+            HttpRequest.Builder reqBuilder = HttpRequest.newBuilder()
                     .uri(URI.create(url))
                     .header("Accept", "application/vnd.github.v3+json")
-                    .header("Authorization", "Bearer " + gh.getAccessToken())
                     .header("Content-Type", "application/json")
-                    .POST(HttpRequest.BodyPublishers.ofString(payload))
-                    .build();
+                    .POST(HttpRequest.BodyPublishers.ofString(payload));
 
-            HttpResponse<String> resp = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+            if (token != null && !token.isBlank()) {
+                reqBuilder.header("Authorization", "Bearer " + token);
+            }
+
+            HttpResponse<String> resp = httpClient.send(reqBuilder.build(), HttpResponse.BodyHandlers.ofString());
             if (resp.statusCode() < 300) {
                 JsonNode node = objectMapper.readTree(resp.body());
                 return node.path("html_url").asText(null);

@@ -11,13 +11,14 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - name: Ping Backend Health & Supabase
+      - name: Ping Backend Health & Neon
         run: |
+          # Prefer secret; fall back to known production URL so cold-starts never sneak in
+          # just because BACKEND_URL was unset.
           URL="${{ secrets.BACKEND_URL }}"
           if [ -z "$URL" ]; then
-            echo "⚠️ BACKEND_URL secret is not set yet in GitHub Repository Secrets."
-            echo "Set BACKEND_URL to your Render live backend URL (e.g. https://aura-backend.onrender.com) to activate."
-            exit 0
+            URL="https://aura-spring.onrender.com"
+            echo "BACKEND_URL secret unset — using production default: ${URL}"
           fi
 
           # Strip trailing slash and ensure protocol
@@ -27,11 +28,16 @@ jobs:
           fi
 
           echo "Pinging ${URL}/health to prevent cold-starts..."
-          STATUS=$(curl -s -o /dev/null -w "%{http_code}" "${URL}/health" --max-time 30 || true)
+          STATUS=$(curl -s -o /tmp/aura_health_body -w "%{http_code}" "${URL}/health" --max-time 45 || true)
+          BODY=$(cat /tmp/aura_health_body 2>/dev/null || true)
 
           if [ "$STATUS" -eq 200 ]; then
-            echo "✅ Server and Supabase database are awake and healthy (HTTP 200)."
+            echo "✅ Server and database are awake and healthy (HTTP 200). Body: ${BODY}"
           else
-            echo "⚠️ Server responded with HTTP ${STATUS} (may be waking up from sleep)."
+            echo "⚠️ Server responded with HTTP ${STATUS} (may be waking up from sleep). Body: ${BODY}"
+            # Second attempt after Render cold-start wake
+            sleep 8
+            STATUS2=$(curl -s -o /dev/null -w "%{http_code}" "${URL}/health" --max-time 45 || true)
+            echo "Retry HTTP ${STATUS2}"
           fi
 

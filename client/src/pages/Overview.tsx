@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { useAuditLogs, useFeatures, useGithubPullRequests, useGithubStatus } from '@/hooks/queries';
+import { resolveApiUrl } from '@/lib/api';
 import type { AuditLogEntry, Environment, Project } from '@/types/domain';
 
 function timeAgo(dateStr: string): string {
@@ -66,7 +67,7 @@ function AuditRow({ entry }: { entry: AuditLogEntry }) {
       <div className="flex-1 min-w-0">
         <p className="text-xs text-foreground font-medium">
           {actionLabel(entry.action)}
-          {entry.entity && entry.entity !== 'PROJECT' ? (
+          {entry.entity && entry.entity !== 'PROJECT' && entry.entityId ? (
             <span className="text-muted-foreground font-normal">
               {' '}· <code className="font-mono">{entry.entityId.slice(0, 8)}</code>
             </span>
@@ -92,6 +93,11 @@ export default function Overview() {
   );
 
   const environments: Environment[] = project.environments ?? [];
+  const streamEnvSlug =
+    environments.find((e) => e.slug === 'development')?.slug ??
+    environments.find((e) => e.slug === 'staging')?.slug ??
+    environments[0]?.slug ??
+    null;
   const totalFlags = features.length;
 
   const enabledCount = features.reduce((n, f) => {
@@ -103,14 +109,18 @@ export default function Overview() {
   const [liveEvents, setLiveEvents] = useState<AuditLogEntry[]>([]);
 
   useEffect(() => {
-    if (!project?.apiKey) return;
-    const streamUrl = `/api/v1/stream?apiKey=${encodeURIComponent(project.apiKey)}&env=development`;
+    if (!project?.apiKey || !streamEnvSlug) return;
+
+    const streamUrl = resolveApiUrl(
+      `/v1/stream?apiKey=${encodeURIComponent(project.apiKey)}&env=${encodeURIComponent(streamEnvSlug)}`,
+    );
     let es: EventSource | null = null;
     try {
       es = new EventSource(streamUrl);
       es.addEventListener('audit_log_created', (e) => {
         try {
           const newEntry: AuditLogEntry = JSON.parse(e.data);
+          if (!newEntry?.id) return;
           setLiveEvents((prev) => [newEntry, ...prev.filter((x) => x.id !== newEntry.id)].slice(0, 5));
         } catch {
           // ignore parsing error
@@ -123,7 +133,7 @@ export default function Overview() {
     return () => {
       es?.close();
     };
-  }, [project?.apiKey]);
+  }, [project?.apiKey, streamEnvSlug]);
 
   const baseEvents = auditData?.data?.slice(0, 5) ?? [];
   const recentEvents = useMemo(() => {

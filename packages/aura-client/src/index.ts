@@ -129,7 +129,17 @@ export class AuraClient {
       });
 
       this.eventSource.onerror = () => {
-        if (this.connectionMode === 'stream') {
+        // EventSource auto-retries; avoid stacking a second polling loop on every error.
+        // Only fall back to polling after the stream is fully closed / unavailable.
+        if (this.eventSource && this.eventSource.readyState === EventSource.CLOSED) {
+          this.closeStream();
+          if (this.connectionMode !== 'polling') {
+            this.startPolling(this.pollIntervalMs);
+          }
+          return;
+        }
+        if (this.connectionMode === 'stream' && !this.timer) {
+          // Soft degradation while EventSource reconnects in the background.
           this.connectionMode = 'polling';
           this.startPolling(this.pollIntervalMs);
         }

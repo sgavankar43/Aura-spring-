@@ -292,6 +292,12 @@ public class FeatureService {
         Environment environment = environmentRepository.findByProjectIdAndSlug(projectId, envSlug)
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Environment with slug '" + envSlug + "' not found"));
 
+        // Four-Eyes: protected environments cannot be mutated directly
+        if (Boolean.TRUE.equals(environment.getRequireApproval())) {
+            throw new ApiException(HttpStatus.CONFLICT,
+                    "Environment '" + envSlug + "' requires Four-Eyes approval. Submit a change request from Governance before toggling.");
+        }
+
         FeatureState state = featureStateRepository.findByFeatureIdAndEnvironmentId(feature.getId(), environment.getId())
                 .orElseGet(() -> FeatureState.builder()
                         .feature(feature)
@@ -301,7 +307,7 @@ public class FeatureService {
                         .build());
 
         state.setEnabled(enabled);
-        featureStateRepository.save(state);
+        state = featureStateRepository.save(state);
 
         auditLogService.logAction(
                 project,
@@ -336,6 +342,12 @@ public class FeatureService {
         Environment environment = environmentRepository.findByProjectIdAndSlug(projectId, envSlug)
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Environment with slug '" + envSlug + "' not found"));
 
+        // Four-Eyes: protected environments cannot be mutated directly
+        if (Boolean.TRUE.equals(environment.getRequireApproval())) {
+            throw new ApiException(HttpStatus.CONFLICT,
+                    "Environment '" + envSlug + "' requires Four-Eyes approval. Submit a change request from Governance before updating targeting.");
+        }
+
         FeatureState state = featureStateRepository.findByFeatureIdAndEnvironmentId(feature.getId(), environment.getId())
                 .orElseGet(() -> FeatureState.builder()
                         .feature(feature)
@@ -348,13 +360,17 @@ public class FeatureService {
             state.setEnabled(request.getEnabled());
         }
         if (request.getRolloutPercentage() != null) {
-            state.setRolloutPercentage(request.getRolloutPercentage());
+            int pct = request.getRolloutPercentage();
+            if (pct < 0 || pct > 100) {
+                throw new ApiException(HttpStatus.BAD_REQUEST, "Rollout percentage must be between 0 and 100");
+            }
+            state.setRolloutPercentage(pct);
         }
         if (request.getRules() != null) {
             state.setRules(request.getRules().isBlank() ? null : request.getRules().trim());
         }
 
-        featureStateRepository.save(state);
+        state = featureStateRepository.save(state);
 
         Map<String, Object> meta = new HashMap<>();
         meta.put("featureKey", key);

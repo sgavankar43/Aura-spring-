@@ -65,6 +65,7 @@ public class McpAndGovernanceTest {
     private User adminUser;
     private UserPrincipal devPrincipal;
     private UserPrincipal adminPrincipal;
+    private Environment devEnv;
     private Environment prodEnv;
     private Feature testFeature;
 
@@ -93,11 +94,19 @@ public class McpAndGovernanceTest {
                 .user(adminUser)
                 .build());
 
+        devEnv = environmentRepository.save(Environment.builder()
+                .project(testProject)
+                .name("Development")
+                .slug("development")
+                .sortOrder(1)
+                .requireApproval(false)
+                .build());
+
         prodEnv = environmentRepository.save(Environment.builder()
                 .project(testProject)
                 .name("Production")
                 .slug("production")
-                .sortOrder(1)
+                .sortOrder(2)
                 .requireApproval(true)
                 .build());
 
@@ -106,6 +115,13 @@ public class McpAndGovernanceTest {
                 .key("critical-billing-v2")
                 .name("Critical Billing Upgrade")
                 .defaultEnabled(false)
+                .build());
+
+        featureStateRepository.save(FeatureState.builder()
+                .feature(testFeature)
+                .environment(devEnv)
+                .enabled(false)
+                .rolloutPercentage(100)
                 .build());
 
         featureStateRepository.save(FeatureState.builder()
@@ -192,19 +208,19 @@ public class McpAndGovernanceTest {
         Map<String, Object> toggleResult = mcpServerService.executeTool("toggle_flag", Map.of(
                 "apiKey", testProject.getApiKey(),
                 "flagKey", "critical-billing-v2",
-                "environment", "production",
+                "environment", "development",
                 "enabled", true
         ));
         assertThat(toggleResult.get("success")).isEqualTo(true);
 
         // Verify state
-        FeatureState state = featureStateRepository.findByFeatureIdAndEnvironmentId(testFeature.getId(), prodEnv.getId()).orElseThrow();
+        FeatureState state = featureStateRepository.findByFeatureIdAndEnvironmentId(testFeature.getId(), devEnv.getId()).orElseThrow();
         assertThat(state.getEnabled()).isTrue();
 
         // 4. evaluate_flags tool execution
         Map<String, Object> evalResult = mcpServerService.executeTool("evaluate_flags", Map.of(
                 "apiKey", testProject.getApiKey(),
-                "environment", "production",
+                "environment", "development",
                 "userId", "usr_mcp_tester"
         ));
         assertThat(evalResult.get("evaluation")).isNotNull();

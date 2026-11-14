@@ -100,7 +100,7 @@ export default function Analytics() {
     const counts: Record<string, number> = {};
     for (const e of allEvents) {
       if (e.action === 'FLAG_ENABLED' || e.action === 'FLAG_DISABLED') {
-        const key = String(e.metadata?.flagKey ?? e.entityId.slice(0, 8));
+        const key = String(e.metadata?.flagKey ?? e.entityId?.slice(0, 8) ?? e.id);
         counts[key] = (counts[key] ?? 0) + 1;
       }
     }

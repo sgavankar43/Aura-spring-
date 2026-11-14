@@ -177,6 +177,9 @@ public class SseStreamService {
             if (!dead.isEmpty()) {
                 entry.getValue().removeAll(dead);
             }
+            if (entry.getValue().isEmpty()) {
+                channels.remove(entry.getKey(), entry.getValue());
+            }
         }
     }
 

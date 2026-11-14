@@ -15,9 +15,11 @@ import com.aura.repository.UserRepository;
 import com.aura.security.UserPrincipal;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import jakarta.annotation.PostConstruct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -29,12 +31,33 @@ import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 
 @Service
 public class GithubService {
 
     private static final Logger log = LoggerFactory.getLogger(GithubService.class);
     private static final String GITHUB_API_BASE = "https://api.github.com";
+
+    @Value("${app.github.token:}")
+    private String systemGithubToken;
+
+    private static final long CACHE_TTL_MS = Duration.ofMinutes(5).toMillis();
+    private final Map<String, CacheEntry> apiCache = new ConcurrentHashMap<>();
+
+    private static class CacheEntry {
+        final JsonNode data;
+        final long timestamp;
+
+        CacheEntry(JsonNode data) {
+            this.data = data;
+            this.timestamp = System.currentTimeMillis();
+        }
+
+        boolean isFresh(long ttlMs) {
+            return System.currentTimeMillis() - timestamp < ttlMs;
+        }
+    }
 
     private final GithubIntegrationRepository githubRepository;
     private final ProjectRepository projectRepository;
@@ -106,7 +129,33 @@ public class GithubService {
 
         // Verify repository via GitHub API
         JsonNode repoNode = fetchGithubJson("/repos/" + owner + "/" + repo, token);
-        if (repoNode == null || repoNode.has("message")) {
+        boolean isRateLimited = repoNode != null && repoNode.has("message") &&
+                repoNode.get("message").asText("").toLowerCase().contains("rate limit");
+
+        String fullName = owner + "/" + repo;
+        boolean isInstalledViaApp = githubAppInstallationRepository.existsByRepoFullNameIgnoreCase(fullName);
+
+        if (isRateLimited) {
+            // Only allow connect-through-rate-limit for repos already authorized via the Aura GitHub App.
+            // Never synthesize write permissions for arbitrary public repositories.
+            if (!isInstalledViaApp) {
+                throw new ApiException(HttpStatus.TOO_MANY_REQUESTS,
+                        "GitHub API rate limit exceeded while verifying '" + fullName + "'. " +
+                        "Install the Aura GitHub App on this repository first, then retry.");
+            }
+            log.warn("GitHub rate limit hit while connecting {}/{}. Using App-authorized synthetic metadata.", owner, repo);
+            ObjectNode synthetic = objectMapper.createObjectNode();
+            synthetic.put("name", repo);
+            synthetic.put("full_name", fullName);
+            synthetic.put("default_branch", "main");
+            synthetic.put("private", false);
+            synthetic.put("html_url", "https://github.com/" + fullName);
+            synthetic.put("description", "Connected GitHub Repository (" + fullName + ")");
+            synthetic.put("stargazers_count", 0);
+            synthetic.put("forks_count", 0);
+            synthetic.put("open_issues_count", 0);
+            repoNode = synthetic;
+        } else if (repoNode == null || repoNode.has("message")) {
             String msg = (repoNode != null && repoNode.has("message"))
                     ? repoNode.get("message").asText()
                     : "Repository not found or access denied";
@@ -114,8 +163,6 @@ public class GithubService {
         }
 
         // Security check: Only allow repositories authorized via the Aura GitHub App or verified write credentials
-        String fullName = owner + "/" + repo;
-        boolean isInstalledViaApp = githubAppInstallationRepository.existsByRepoFullNameIgnoreCase(fullName);
         boolean hasWritePermission = repoNode.has("permissions") &&
                 (repoNode.path("permissions").path("push").asBoolean(false) ||
                  repoNode.path("permissions").path("admin").asBoolean(false));
@@ -235,6 +282,34 @@ public class GithubService {
                         .build());
             }
         }
+
+        // When GitHub is rate-limited/unreachable, keep UI usable without inventing fake feature branches.
+        // Only surface the default branch plus branches already linked to flags in this project.
+        if (branches.isEmpty()) {
+            log.info("Serving resilient branch fallback for {}/{} (API empty/rate-limited)",
+                    integration.getRepoOwner(), integration.getRepoName());
+            branches.add(GithubBranchDto.builder()
+                    .name(defaultBranch)
+                    .commitSha("HEAD")
+                    .isProtected(true)
+                    .isDefault(true)
+                    .isOccupied(false)
+                    .build());
+
+            for (Map.Entry<String, String> entry : occupiedBranches.entrySet()) {
+                if (entry.getKey().equalsIgnoreCase(defaultBranch)) {
+                    continue;
+                }
+                branches.add(GithubBranchDto.builder()
+                        .name(entry.getKey())
+                        .commitSha("HEAD")
+                        .isProtected(false)
+                        .isDefault(false)
+                        .isOccupied(true)
+                        .occupiedByFeatureKey(entry.getValue())
+                        .build());
+            }
+        }
         return branches;
     }
 
@@ -255,6 +330,8 @@ public class GithubService {
                         .build());
             }
         }
+
+        // Prefer empty over fabricated release tags when GitHub is unavailable.
         return tags;
     }
 
@@ -289,6 +366,8 @@ public class GithubService {
                         .build());
             }
         }
+
+        // Prefer empty over fabricated commit history when GitHub is unavailable.
         return commits;
     }
 
@@ -342,6 +421,8 @@ public class GithubService {
                         .build());
             }
         }
+
+        // Prefer empty over fabricated tree entries when GitHub is unavailable.
         return items;
     }
 
@@ -371,6 +452,8 @@ public class GithubService {
                         .build());
             }
         }
+
+        // Prefer empty over fabricated PRs when GitHub is unavailable.
         return prs;
     }
 
@@ -408,7 +491,19 @@ public class GithubService {
                 .build();
     }
 
+    public String resolveToken(String userToken) {
+        return GithubTokenResolver.resolveToken(userToken, systemGithubToken);
+    }
+
     private JsonNode fetchGithubJson(String apiPath, String token) {
+        String effectiveToken = resolveToken(token);
+        String cacheKey = apiPath + "::" + (effectiveToken != null ? effectiveToken.hashCode() : "anon");
+
+        CacheEntry cached = apiCache.get(cacheKey);
+        if (cached != null && cached.isFresh(CACHE_TTL_MS)) {
+            return cached.data;
+        }
+
         try {
             HttpRequest.Builder reqBuilder = HttpRequest.newBuilder()
                     .uri(URI.create(GITHUB_API_BASE + apiPath))
@@ -416,14 +511,25 @@ public class GithubService {
                     .header("User-Agent", "Aura-Platform/1.0")
                     .GET();
 
-            if (token != null && !token.isBlank()) {
-                reqBuilder.header("Authorization", "Bearer " + token);
+            if (effectiveToken != null && !effectiveToken.isBlank()) {
+                reqBuilder.header("Authorization", "Bearer " + effectiveToken);
             }
 
             HttpResponse<String> response = httpClient.send(reqBuilder.build(), HttpResponse.BodyHandlers.ofString());
 
             if (response.statusCode() == 404) {
                 return null;
+            }
+
+            if (response.statusCode() == 403 || response.statusCode() == 429) {
+                String body = response.body();
+                boolean isRateLimit = body != null && (body.contains("rate limit") || body.contains("API rate limit exceeded"));
+                if (isRateLimit) {
+                    log.warn("GitHub API rate limit exceeded on {}. Serving cached or synthetic fallback.", apiPath);
+                    if (cached != null) {
+                        return cached.data;
+                    }
+                }
             }
 
             if (response.statusCode() >= 400) {
@@ -435,10 +541,18 @@ public class GithubService {
                 }
             }
 
-            return objectMapper.readTree(response.body());
+            JsonNode parsed = objectMapper.readTree(response.body());
+            if (parsed != null && !parsed.has("message")) {
+                apiCache.put(cacheKey, new CacheEntry(parsed));
+            }
+            return parsed;
         } catch (Exception ex) {
+            if (cached != null) {
+                log.warn("GitHub API call failed for {}, falling back to cached response: {}", apiPath, ex.getMessage());
+                return cached.data;
+            }
             log.error("Exception calling GitHub API {}: {}", apiPath, ex.getMessage());
-            throw new ApiException(HttpStatus.BAD_GATEWAY, "Failed to connect to GitHub API: " + ex.getMessage());
+            return null;
         }
     }
 

@@ -11,6 +11,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -31,6 +32,9 @@ public class GithubBotService {
     private static final Logger log = LoggerFactory.getLogger(GithubBotService.class);
     private static final String GITHUB_API_BASE = "https://api.github.com";
     private static final String BOT_COMMENT_MARKER = "<!-- aura:pr-report -->";
+
+    @Value("${app.github.token:}")
+    private String systemGithubToken;
 
     private final GithubIntegrationRepository githubRepository;
     private final ProjectRepository projectRepository;
@@ -489,7 +493,7 @@ public class GithubBotService {
     }
 
     private String postOrUpdatePrComment(GithubIntegration integration, int prNumber, String markdownBody) {
-        String token = integration.getAccessToken();
+        String token = GithubTokenResolver.resolveToken(integration.getAccessToken(), systemGithubToken);
         if (token == null || token.isBlank()) return null;
 
         String owner = integration.getRepoOwner();
@@ -563,8 +567,9 @@ public class GithubBotService {
                     .header("User-Agent", "Aura-Platform/1.0")
                     .GET();
 
-            if (token != null && !token.isBlank()) {
-                reqBuilder.header("Authorization", "Bearer " + token);
+            String effectiveToken = GithubTokenResolver.resolveToken(token, systemGithubToken);
+            if (effectiveToken != null && !effectiveToken.isBlank()) {
+                reqBuilder.header("Authorization", "Bearer " + effectiveToken);
             }
 
             HttpResponse<String> response = httpClient.send(reqBuilder.build(), HttpResponse.BodyHandlers.ofString());

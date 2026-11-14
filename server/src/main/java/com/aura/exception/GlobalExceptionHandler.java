@@ -34,9 +34,12 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Map<String, String>> handleGenericException(Exception ex) {
+        // Avoid leaking internal exception details to API clients in production.
+        org.slf4j.LoggerFactory.getLogger(GlobalExceptionHandler.class)
+                .error("Unhandled exception: {}", ex.getMessage(), ex);
         Map<String, String> body = new HashMap<>();
-        body.put("error", ex.getMessage() != null ? ex.getMessage() : "Internal server error");
-        body.put("message", ex.getMessage() != null ? ex.getMessage() : "Internal server error");
+        body.put("error", "Internal server error");
+        body.put("message", "Internal server error");
         return new ResponseEntity<>(body, HttpStatus.INTERNAL_SERVER_ERROR);
     }
 }

@@ -10,12 +10,22 @@ spring:
     username: ${SPRING_DATASOURCE_USERNAME:postgres}
     password: ${SPRING_DATASOURCE_PASSWORD:postgrespassword}
     driver-class-name: org.postgresql.Driver
+    hikari:
+      # Neon/serverless poolers drop idle clients; keep the pool small and validated.
+      maximum-pool-size: ${HIKARI_MAX_POOL:5}
+      minimum-idle: ${HIKARI_MIN_IDLE:1}
+      connection-timeout: 10000
+      validation-timeout: 5000
+      idle-timeout: 300000
+      max-lifetime: 540000
+      keepalive-time: 60000
 
   jpa:
     database-platform: org.hibernate.dialect.PostgreSQLDialect
     hibernate:
       ddl-auto: ${SPRING_JPA_HIBERNATE_DDL_AUTO:update}
     show-sql: false
+    open-in-view: false
     properties:
       hibernate:
         format_sql: true
@@ -24,3 +34,6 @@ app:
   jwt:
     secret: ${JWT_SECRET:aura_secret_key_which_should_be_at_least_256_bits_long_for_security_and_production_grade_deployment}
     expiration-ms: 86400000
+  github:
+    # Optional system PAT / App installation token. Never commit real tokens.
+    token: ${GITHUB_TOKEN:${GITHUB_PAT:}}

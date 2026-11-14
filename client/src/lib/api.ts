@@ -71,13 +71,24 @@ export async function apiFetch<T = unknown>(
   const raw = await response.text();
 
   if (!response.ok) {
+    // Expired / invalid JWT: clear session so AuthProvider can recover cleanly.
+    if (response.status === 401 && !skipAuth) {
+      try {
+        localStorage.removeItem('aura_token');
+        window.dispatchEvent(new Event('aura:unauthorized'));
+      } catch {
+        // ignore storage failures
+      }
+    }
+
     let message = `HTTP ${response.status}`;
     if (raw) {
       try {
         const body = JSON.parse(raw) as { message?: string; error?: string };
         message = body.error ?? body.message ?? message;
       } catch {
-        message = raw;
+        // Prefer short text; HTML error pages (e.g. SPA fallback) are not useful.
+        message = raw.startsWith('<') ? `HTTP ${response.status}` : raw.slice(0, 300);
       }
     }
     throw new ApiError(response.status, message);
